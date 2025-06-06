@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Encrypted Bookmarks</title>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+   <style>
+       :root {
+           --bg-color: #1a1a1a;
+           --text-color: #f0f0f0;
+           --primary-color: #007bff;
+           --secondary-color: #333;
+           --border-color: #444;
+           --hover-color: #0056b3;
+           --error-color: #dc3545;
+       }
+       body {
+           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+           background-color: var(--bg-color);
+           color: var(--text-color);
+           margin: 0;
+           padding: 20px;
+           display: flex;
+           flex-direction: column;
+           align-items: center;
+       }
+       .container {
+           width: 100%;
+           max-width: 800px;
+       }
+       h1 {
+           text-align: center;
+           color: var(--primary-color);
+       }
+       .auth-container, .main-container {
+           background-color: var(--secondary-color);
+           padding: 2rem;
+           border-radius: 8px;
+           box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+       }
+       .hidden { display: none; }
+       input[type="password"], input[type="text"], input[type="url"] {
+           width: calc(100% - 20px);
+           padding: 10px;
+           margin-bottom: 10px;
+           border: 1px solid var(--border-color);
+           border-radius: 4px;
+           background-color: var(--bg-color);
+           color: var(--text-color);
+       }
+       button {
+           width: 100%;
+           padding: 10px;
+           border: none;
+           border-radius: 4px;
+           background-color: var(--primary-color);
+           color: white;
+           font-size: 16px;
+           cursor: pointer;
+           transition: background-color 0.3s;
+       }
+       button:hover { background-color: var(--hover-color); }
+       .logout-btn { background-color: #6c757d; margin-top: 10px; }
+       .logout-btn:hover { background-color: #5a6268; }
+       .add-form { margin-bottom: 20px; }
+       .bookmark-list {
+           list-style: none;
+           padding: 0;
+       }
+       .bookmark-item {
+           display: flex;
+           align-items: center;
+           justify-content: space-between;
+           padding: 15px;
+           background-color: #2a2a2a;
+           border: 1px solid var(--border-color);
+           border-radius: 4px;
+           margin-bottom: 10px;
+           word-break: break-all;
+       }
+       .bookmark-item a {
+           color: var(--text-color);
+           text-decoration: none;
+           font-weight: bold;
+           margin-right: 15px;
+       }
+        .bookmark-item a:hover {
+           text-decoration: underline;
+           color: var(--primary-color);
+       }
+       .bookmark-item .actions button {
+           width: auto;
+           padding: 5px 10px;
+           margin-left: 5px;
+           font-size: 12px;
+       }
+       .bookmark-item .actions .delete-btn { background-color: var(--error-color); }
+       .bookmark-item .actions .delete-btn:hover { background-color: #c82333; }
+       .loader {
+           border: 4px solid #f3f3f3;
+           border-radius: 50%;
+           border-top: 4px solid var(--primary-color);
+           width: 40px;
+           height: 40px;
+           animation: spin 1s linear infinite;
+           margin: 20px auto;
+       }
+       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+       #error-message { color: var(--error-color); text-align: center; margin-top: 10px; }
+   </style>
+</head>
+<body>
+   <div class="container">
+       <h1>我的加密书签</h1>
+
+       <div id="auth-container" class="auth-container">
+           <input type="password" id="password" placeholder="请输入密码...">
+           <button id="login-btn">解锁 / 创建</button>
+           <div id="auth-loader" class="loader hidden"></div>
+           <p id="auth-error" class="error-message"></p>
+       </div>
+
+       <div id="main-container" class="main-container hidden">
+           <div class="add-form">
+               <input type="text" id="bm-title" placeholder="书签标题">
+               <input type="url" id="bm-url" placeholder="书签网址 (https://...)">
+               <button id="add-btn">添加书签</button>
+           </div>
+
+           <ul id="bookmark-list" class="bookmark-list"></ul>
+           <div id="data-loader" class="loader hidden"></div>
+
+           <button id="logout-btn" class="logout-btn">锁定</button>
+       </div>
+   </div>
+
+   <script>
+       // --- 用户配置 ---
+       const GIST_ID = "16bea01441ec8fba4df2d299162dc7e3"; // <--- 在这里填入你的 Gist ID
+       const GITHUB_TOKEN = "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"; // <--- 在这里填入你的 GitHub Personal Access Token
+       // --- 配置结束 ---
+
+       const GIST_URL = `https://api.github.com/gists/${GIST_ID}`;
+
+       const authContainer = document.getElementById('auth-container');
+       const mainContainer = document.getElementById('main-container');
+       const passwordInput = document.getElementById('password');
+       const loginBtn = document.getElementById('login-btn');
+       const logoutBtn = document.getElementById('logout-btn');
+       const bookmarkList = document.getElementById('bookmark-list');
+       const addBtn = document.getElementById('add-btn');
+       const titleInput = document.getElementById('bm-title');
+       const urlInput = document.getElementById('bm-url');
+       const authLoader = document.getElementById('auth-loader');
+       const dataLoader = document.getElementById('data-loader');
+       const authError = document.getElementById('auth-error');
+
+       let encryptionKey = null;
+       let bookmarks = [];
+
+       function encrypt(text, key) {
+           return CryptoJS.AES.encrypt(text, key).toString();
+       }
+
+       function decrypt(ciphertext, key) {
+           const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+           return bytes.toString(CryptoJS.enc.Utf8);
+       }
+
+       async function fetchGist() {
+           toggleLoader(authLoader, true);
+           authError.textContent = '';
+           try {
+               const response = await fetch(GIST_URL, {
+                   headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+               });
+               if (!response.ok) throw new Error(`GitHub API 错误: ${response.statusText}`);
+               const gist = await response.json();
+               return gist.files['bookmarks.json'].content;
+           } catch (error) {
+               console.error('获取 Gist 失败:', error);
+               authError.textContent = '获取数据失败。请检查 Gist ID 和 Token 是否正确。';
+               return null;
+           } finally {
+               toggleLoader(authLoader, false);
+           }
+       }
+
+       async function updateGist(content) {
+           try {
+               const response = await fetch(GIST_URL, {
+                   method: 'PATCH',
+                   headers: {
+                       'Authorization': `token ${GITHUB_TOKEN}`,
+                       'Content-Type': 'application/json'
+                   },
+                   body: JSON.stringify({
+                       files: { 'bookmarks.json': { content: content } }
+                   })
+               });
+               if (!response.ok) throw new Error('更新 Gist 失败');
+           } catch (error) {
+               console.error('更新 Gist 失败:', error);
+               alert('保存书签失败！');
+           }
+       }
+
+       function renderBookmarks() {
+           bookmarkList.innerHTML = '';
+           bookmarks.forEach((bm, index) => {
+               const li = document.createElement('li');
+               li.className = 'bookmark-item';
+               li.innerHTML = `
+                   <a href="${bm.url}" target="_blank" rel="noopener noreferrer">${bm.title}</a>
+                   <div class="actions">
+                       <button onclick="deleteBookmark(${index})">删除</button>
+                   </div>
+               `;
+               bookmarkList.appendChild(li);
+           });
+       }
+
+       async function saveBookmarks() {
+           toggleLoader(dataLoader, true);
+           const encryptedData = encrypt(JSON.stringify(bookmarks), encryptionKey);
+           await updateGist(encryptedData);
+           toggleLoader(dataLoader, false);
+       }
+
+       window.deleteBookmark = async (index) => {
+           if (confirm(`确定要删除书签 "${bookmarks[index].title}" 吗？`)) {
+               bookmarks.splice(index, 1);
+               renderBookmarks();
+               await saveBookmarks();
+           }
+       };
+
+       loginBtn.addEventListener('click', async () => {
+           const password = passwordInput.value;
+           if (!password) {
+               authError.textContent = '密码不能为空。';
+               return;
+           }
+           encryptionKey = password;
+
+           const content = await fetchGist();
+           if (content === null) return;
+
+           if (content === '{}') { // 首次使用
+               if (confirm('未找到数据，是否使用当前密码创建新的加密书签库？')) {
+                   bookmarks = [];
+                   await saveBookmarks();
+                   showMainView();
+               }
+           } else {
+               try {
+                   const decrypted = decrypt(content, encryptionKey);
+                   if (!decrypted) throw new Error('解密失败');
+                   bookmarks = JSON.parse(decrypted);
+                   showMainView();
+               } catch (e) {
+                   console.error('解密失败:', e);
+                   authError.textContent = '密码错误或数据已损坏。';
+                   encryptionKey = null;
+               }
+           }
+       });
+
+       addBtn.addEventListener('click', async () => {
+           const title = titleInput.value.trim();
+           const url = urlInput.value.trim();
+           if (title && url) {
+               bookmarks.unshift({ title, url });
+               titleInput.value = '';
+               urlInput.value = '';
+               renderBookmarks();
+               await saveBookmarks();
+           } else {
+               alert('标题和网址不能为空！');
+           }
+       });
+
+       logoutBtn.addEventListener('click', () => {
+           encryptionKey = null;
+           bookmarks = [];
+           passwordInput.value = '';
+           authError.textContent = '';
+           showAuthView();
+       });
+
+       function showAuthView() {
+           mainContainer.classList.add('hidden');
+           authContainer.classList.remove('hidden');
+       }
+
+       function showMainView() {
+           authContainer.classList.add('hidden');
+           mainContainer.classList.remove('hidden');
+           renderBookmarks();
+       }
+
+       function toggleLoader(loader, show) {
+           loader.classList.toggle('hidden', !show);
+       }
+
+   </script>
+</body>
+</html>
