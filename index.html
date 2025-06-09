@@ -31,7 +31,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
@@ -54,20 +54,19 @@
         .main-container {
             display: flex;
             flex: 1;
+            min-height: calc(100vh - var(--header-height)); /* 调整为减去header高度 */
             overflow: hidden;
         }
         
         .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
             width: var(--sidebar-width);
             background-color: var(--sidebar-bg);
             border-right: 1px solid var(--border-color);
             padding: 10px 0;
             overflow-y: auto;
             transition: width 0.3s;
+            display: flex;
+            flex-direction: column;
         }
         
         .sidebar.collapsed {
