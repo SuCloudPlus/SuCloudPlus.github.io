@@ -620,6 +620,24 @@
                 transform: translateY(20px);
             }
         }
+        
+        /* 拖放样式 */
+        .dragging {
+            opacity: 0.5;
+            background-color: rgba(0, 123, 255, 0.2);
+        }
+        
+        .drop-target {
+            border: 2px dashed var(--primary-color);
+        }
+        
+        .folder-item.dragover {
+            background-color: rgba(0, 123, 255, 0.2);
+        }
+        
+        .bookmark-row.dragover {
+            background-color: rgba(0, 123, 255, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -655,7 +673,13 @@
                 <div class="folder-tree-container">
                     <div class="folder-tree" id="folder-tree">
                         <!-- 根目录项 -->
-                        <div class="folder-item active" data-id="root" onclick="selectFolder('root')">
+                        <div class="folder-item active" data-id="root" 
+                             draggable="true" 
+                             ondragstart="onFolderDragStart(event)" 
+                             ondragover="onFolderDragOver(event)" 
+                             ondrop="onFolderDrop(event)" 
+                             ondragenter="onFolderDragEnter(event)" 
+                             ondragleave="onFolderDragLeave(event)">
                             <span class="folder-icon">
                                 <i class="fas fa-folder-open"></i>
                             </span>
@@ -826,6 +850,11 @@
         let currentFolderId = 'root';
         let editingBookmarkId = null;
         let folderPathMap = {};
+        let lastETag = null; // 用于条件更新
+        let lastModified = null; // 用于冲突检测
+        let pendingChanges = []; // 待处理的操作队列
+        let isSaving = false; // 保存状态标志
+        let draggedItem = null; // 当前拖拽的项目
 
         // 生成唯一ID
         function generateId() {
@@ -888,8 +917,15 @@
                     headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
                 });
                 if (!response.ok) throw new Error(`GitHub API错误: ${response.statusText}`);
+                
+                // 保存ETag用于条件更新
+                lastETag = response.headers.get('ETag');
+                
                 const gist = await response.json();
-                return gist.files['bookmarks.json'].content;
+                return {
+                    content: gist.files['bookmarks.json'].content,
+                    lastModified: gist.updated_at
+                };
             } catch (error) {
                 console.error('获取Gist失败:', error);
                 showToast('获取数据失败。请检查Gist ID和Token是否正确。', 'error');
@@ -904,26 +940,46 @@
             try {
                 const data = {
                     folders: folders,
-                    bookmarks: bookmarks
+                    bookmarks: bookmarks,
+                    lastModified: new Date().toISOString() // 记录最后修改时间
                 };
                 const encryptedData = encrypt(JSON.stringify(data), encryptionKey);
                 
+                const headers = {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Content-Type': 'application/json'
+                };
+                
+                // 添加条件更新头
+                if (lastETag) {
+                    headers['If-Match'] = lastETag;
+                }
+                
                 const response = await fetch(GIST_URL, {
                     method: 'PATCH',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: headers,
                     body: JSON.stringify({
                         files: { 'bookmarks.json': { content: encryptedData } }
                     })
                 });
                 
-                if (!response.ok) throw new Error('更新Gist失败');
+                if (!response.ok) {
+                    if (response.status === 412) {
+                        // 条件更新失败，数据已被修改
+                        showToast('数据已被其他设备修改，请重新加载。', 'warning');
+                        throw new Error('CONFLICT');
+                    }
+                    throw new Error('更新Gist失败');
+                }
+                
+                // 更新ETag
+                lastETag = response.headers.get('ETag');
                 return true;
             } catch (error) {
                 console.error('更新Gist失败:', error);
-                showToast('保存书签失败！', 'error');
+                if (error.message !== 'CONFLICT') {
+                    showToast('保存书签失败！', 'error');
+                }
                 return false;
             }
         }
@@ -993,7 +1049,14 @@
             let html = '';
             subfolders.forEach(folder => {
                 html += `
-                    <div class="folder-card" onclick="selectFolder('${folder.id}')">
+                    <div class="folder-card" 
+                         draggable="true"
+                         ondragstart="onFolderDragStart(event, '${folder.id}')" 
+                         ondragover="onFolderDragOver(event)" 
+                         ondrop="onFolderDrop(event, '${folder.id}')" 
+                         ondragenter="onFolderDragEnter(event)" 
+                         ondragleave="onFolderDragLeave(event)"
+                         data-id="${folder.id}">
                         <div class="folder-card-icon">
                             <i class="fas fa-folder"></i>
                         </div>
@@ -1033,7 +1096,12 @@
                     <li>
                         <div class="folder-item ${isActive ? 'active' : ''}" 
                              data-id="${folder.id}" 
-                             onclick="selectFolder('${folder.id}')">
+                             draggable="true"
+                             ondragstart="onFolderDragStart(event, '${folder.id}')" 
+                             ondragover="onFolderDragOver(event)" 
+                             ondrop="onFolderDrop(event, '${folder.id}')" 
+                             ondragenter="onFolderDragEnter(event)" 
+                             ondragleave="onFolderDragLeave(event)">
                             <span class="folder-icon" onclick="toggleFolder(event, '${folder.id}')">
                                 <i class="fas ${hasChildren ? (isExpanded ? 'fa-folder-open' : 'fa-folder') : 'fa-folder'}"></i>
                             </span>
@@ -1086,7 +1154,14 @@
             
             currentBookmarks.forEach(bookmark => {
                 html += `
-                    <tr class="bookmark-row">
+                    <tr class="bookmark-row" 
+                        draggable="true"
+                        ondragstart="onBookmarkDragStart(event, '${bookmark.id}')" 
+                        ondragover="onBookmarkDragOver(event)" 
+                        ondrop="onBookmarkDrop(event, '${bookmark.id}')" 
+                        ondragenter="onBookmarkDragEnter(event)" 
+                        ondragleave="onBookmarkDragLeave(event)"
+                        data-id="${bookmark.id}">
                         <td class="bookmark-title" onclick="openBookmark('${bookmark.url}')">${bookmark.title}</td>
                         <td class="bookmark-url">${bookmark.url}</td>
                         <td>
@@ -1179,12 +1254,14 @@
                 return;
             }
             
-            bookmarks.push({
+            const newBookmark = {
                 id: generateId(),
                 title: title,
                 url: url,
                 folderId: folderId
-            });
+            };
+            
+            bookmarks.push(newBookmark);
             
             hideAllForms();
             document.getElementById('bm-title').value = '';
@@ -1204,12 +1281,14 @@
                 return;
             }
             
-            folders.push({
+            const newFolder = {
                 id: generateId(),
                 name: name,
                 parentId: parentId,
                 expanded: parentId === 'root' // 根目录下的文件夹默认展开
-            });
+            };
+            
+            folders.push(newFolder);
             
             hideAllForms();
             document.getElementById('folder-name').value = '';
@@ -1410,8 +1489,11 @@
             }
             encryptionKey = password;
 
-            const content = await fetchGist();
-            if (content === null) return;
+            const result = await fetchGist();
+            if (result === null) return;
+            
+            let { content, lastModified } = result;
+            lastModified = lastModified; // 保存最后修改时间
 
             if (content === '{}') { // 首次使用
                 if (confirm('未找到数据，是否使用当前密码创建新的加密书签库？')) {
@@ -1468,6 +1550,115 @@
             bookmarks = bookmarks.filter(bm => bm.id !== id);
             await saveAndRender();
             showToast('书签已删除', 'success');
+        }
+
+        // 拖拽功能实现
+        function onBookmarkDragStart(event, bookmarkId) {
+            event.dataTransfer.setData('text/plain', bookmarkId);
+            draggedItem = {
+                type: 'bookmark',
+                id: bookmarkId
+            };
+            event.target.classList.add('dragging');
+        }
+        
+        function onBookmarkDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+        }
+        
+        function onBookmarkDrop(event, targetBookmarkId) {
+            event.preventDefault();
+            if (!draggedItem || draggedItem.type !== 'bookmark') return;
+            
+            const sourceId = draggedItem.id;
+            const targetId = targetBookmarkId;
+            
+            if (sourceId === targetId) return;
+            
+            // 找到源书签和目标书签的索引
+            const sourceIndex = bookmarks.findIndex(b => b.id === sourceId);
+            const targetIndex = bookmarks.findIndex(b => b.id === targetId);
+            
+            if (sourceIndex === -1 || targetIndex === -1) return;
+            
+            // 移动书签
+            const [movedBookmark] = bookmarks.splice(sourceIndex, 1);
+            bookmarks.splice(targetIndex, 0, movedBookmark);
+            
+            // 清除拖拽状态
+            document.querySelectorAll('.bookmark-row').forEach(row => {
+                row.classList.remove('dragging', 'dragover');
+            });
+            
+            saveAndRender();
+            draggedItem = null;
+        }
+        
+        function onBookmarkDragEnter(event) {
+            event.preventDefault();
+            event.target.closest('.bookmark-row').classList.add('dragover');
+        }
+        
+        function onBookmarkDragLeave(event) {
+            event.target.closest('.bookmark-row').classList.remove('dragover');
+        }
+        
+        function onFolderDragStart(event, folderId) {
+            event.dataTransfer.setData('text/plain', folderId);
+            draggedItem = {
+                type: 'folder',
+                id: folderId
+            };
+            event.target.classList.add('dragging');
+            event.stopPropagation();
+        }
+        
+        function onFolderDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            event.target.closest('.folder-item, .folder-card').classList.add('dragover');
+            event.stopPropagation();
+        }
+        
+        function onFolderDrop(event, targetFolderId) {
+            event.preventDefault();
+            if (!draggedItem || draggedItem.type !== 'folder') return;
+            
+            const sourceId = draggedItem.id;
+            const targetId = targetFolderId;
+            
+            if (sourceId === targetId) return;
+            
+            // 找到源文件夹和目标文件夹的索引
+            const sourceIndex = folders.findIndex(f => f.id === sourceId);
+            const targetIndex = folders.findIndex(f => f.id === targetId);
+            
+            if (sourceIndex === -1 || targetIndex === -1) return;
+            
+            // 移动文件夹
+            const [movedFolder] = folders.splice(sourceIndex, 1);
+            folders.splice(targetIndex, 0, movedFolder);
+            
+            // 清除拖拽状态
+            document.querySelectorAll('.folder-item, .folder-card').forEach(item => {
+                item.classList.remove('dragging', 'dragover');
+            });
+            
+            saveAndRender();
+            draggedItem = null;
+            event.stopPropagation();
+        }
+        
+        function onFolderDragEnter(event) {
+            event.preventDefault();
+            event.target.closest('.folder-item, .folder-card').classList.add('dragover');
+            event.stopPropagation();
+        }
+        
+        function onFolderDragLeave(event) {
+            event.target.closest('.folder-item, .folder-card').classList.remove('dragover');
+            event.stopPropagation();
         }
 
         // 事件监听器
