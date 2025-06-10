@@ -11,14 +11,13 @@
         :root {
             --bg-color: #1a1a1a;
             --text-color: #f0f0f0;
-            --primary-color: #4a6cf7;
-            --secondary-color: #2d2d39;
+            --primary-color: #007bff;
+            --secondary-color: #333;
             --border-color: #444;
-            --hover-color: #3a56d8;
-            --error-color: #ff4757;
-            --success-color: #2ed573;
-            --warning-color: #ffa502;
-            --sidebar-bg: #252530;
+            --hover-color: #0056b3;
+            --error-color: #dc3545;
+            --success-color: #28a745;
+            --sidebar-bg: #252525;
             --sidebar-width: 280px;
             --header-height: 60px;
             --row-hover: rgba(255, 255, 255, 0.05);
@@ -31,35 +30,29 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            line-height: 1.6;
         }
         
         .header {
             height: var(--header-height);
-            background: linear-gradient(135deg, #1e1e2a, #2d2d39);
+            background-color: var(--secondary-color);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 25px;
+            padding: 0 20px;
             border-bottom: 1px solid var(--border-color);
             flex-shrink: 0;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
         
         .header h1 {
             color: var(--primary-color);
             font-size: 1.5rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 12px;
         }
         
         .main-container {
@@ -71,23 +64,20 @@
         
         .sidebar {
             width: var(--sidebar-width);
-            background: var(--sidebar-bg);
+            background-color: var(--sidebar-bg);
             border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            transition: all 0.3s ease;
         }
         
         .sidebar-header {
-            padding: 18px 20px;
+            padding: 15px 20px;
             border-bottom: 1px solid var(--border-color);
-            font-weight: 600;
+            font-weight: bold;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: #a0a0c0;
-            font-size: 1.1rem;
         }
         
         .folder-tree-container {
@@ -102,17 +92,16 @@
         }
         
         .folder-item {
-            padding: 10px 20px;
+            padding: 8px 20px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            transition: all 0.2s;
+            transition: background-color 0.2s;
             position: relative;
-            border-left: 3px solid transparent;
         }
         
         .folder-item:hover {
-            background-color: rgba(74, 108, 247, 0.1);
+            background-color: var(--row-hover);
         }
         
         .folder-item:hover .folder-actions {
@@ -120,28 +109,26 @@
         }
         
         .folder-item.active {
-            background-color: rgba(74, 108, 247, 0.15);
-            border-left-color: var(--primary-color);
+            background-color: rgba(0, 123, 255, 0.15);
         }
         
         .folder-icon {
-            margin-right: 12px;
-            width: 22px;
+            margin-right: 10px;
+            width: 20px;
             text-align: center;
             color: var(--primary-color);
         }
         
         .folder-name {
             flex: 1;
-            font-size: 15px;
+            font-size: 14px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-weight: 500;
         }
         
         .folder-children {
-            padding-left: 32px;
+            padding-left: 28px;
             display: none;
         }
         
@@ -152,13 +139,12 @@
         .folder-actions {
             display: none;
             position: absolute;
-            right: 12px;
+            right: 10px;
             top: 50%;
             transform: translateY(-50%);
             background: rgba(0, 0, 0, 0.7);
-            border-radius: 4px;
-            padding: 3px;
-            backdrop-filter: blur(5px);
+            border-radius: 3px;
+            padding: 2px;
         }
         
         .folder-action {
@@ -166,9 +152,8 @@
             border: none;
             color: #aaa;
             cursor: pointer;
-            padding: 4px 6px;
-            border-radius: 4px;
-            transition: all 0.2s;
+            padding: 3px 5px;
+            border-radius: 3px;
         }
         
         .folder-action:hover {
@@ -182,181 +167,167 @@
             flex-direction: column;
             overflow: hidden;
             position: relative;
-            background: linear-gradient(135deg, #1a1a25, #22222f);
         }
         
         .toolbar {
             display: flex;
             justify-content: space-between;
-            padding: 15px 25px;
+            padding: 15px 20px;
             border-bottom: 1px solid var(--border-color);
-            background: var(--secondary-color);
+            background-color: var(--secondary-color);
             flex-shrink: 0;
         }
         
         .current-folder {
-            font-size: 1.2rem;
-            font-weight: 600;
+            font-size: 1.1rem;
+            font-weight: bold;
             color: var(--primary-color);
             display: flex;
             align-items: center;
-            gap: 10px;
         }
         
         .folder-path {
             display: flex;
             align-items: center;
             font-size: 14px;
-            padding: 12px 20px;
+            padding: 10px 15px;
             border-bottom: 1px solid var(--border-color);
-            background: rgba(45, 45, 57, 0.6);
+            background-color: var(--secondary-color);
         }
         
         .path-segment {
             cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 5px;
-            transition: background 0.2s;
-            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 4px;
         }
         
         .path-segment:hover {
-            background-color: rgba(74, 108, 247, 0.15);
+            background-color: var(--row-hover);
         }
         
         .path-divider {
-            margin: 0 8px;
-            color: #5a5a7a;
+            margin: 0 5px;
+            color: #666;
         }
         
         .btn-group {
             display: flex;
-            gap: 12px;
+            gap: 10px;
         }
         
         .btn {
-            padding: 9px 18px;
-            background: var(--primary-color);
+            padding: 8px 15px;
+            background-color: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-weight: 500;
-            transition: all 0.2s;
-            box-shadow: 0 4px 10px rgba(74, 108, 247, 0.3);
+            gap: 5px;
+        }
+        
+        .btn i {
+            font-size: 0.9rem;
         }
         
         .btn:hover {
-            background: var(--hover-color);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 14px rgba(74, 108, 247, 0.4);
+            background-color: var(--hover-color);
         }
         
         .btn-outline {
             background: transparent;
             border: 1px solid var(--primary-color);
             color: var(--primary-color);
-            box-shadow: none;
         }
         
         .btn-outline:hover {
-            background-color: rgba(74, 108, 247, 0.1);
-            transform: translateY(0);
-            box-shadow: none;
+            background-color: rgba(0, 123, 255, 0.1);
         }
         
         .bookmark-list-container {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 15px;
         }
         
         .bookmark-table {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
+            border-collapse: collapse;
         }
         
         .bookmark-table th {
             text-align: left;
-            padding: 16px 20px;
+            padding: 12px 15px;
             border-bottom: 1px solid var(--border-color);
-            background: rgba(45, 45, 57, 0.8);
+            background-color: var(--secondary-color);
             position: sticky;
             top: 0;
             z-index: 10;
-            font-weight: 600;
-            color: #a0a0c0;
         }
         
         .bookmark-table td {
-            padding: 16px 20px;
-            border-bottom: 1px solid rgba(68, 68, 68, 0.5);
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
             vertical-align: middle;
         }
         
         .bookmark-row:hover {
-            background-color: rgba(74, 108, 247, 0.05);
+            background-color: var(--row-hover);
         }
         
         .bookmark-title {
-            font-weight: 600;
+            font-weight: bold;
             max-width: 250px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             cursor: pointer;
-            color: #e0e0ff;
         }
         
         .bookmark-title:hover {
             color: var(--primary-color);
+            text-decoration: underline;
         }
         
         .bookmark-url {
-            color: #8a8ab5;
+            color: #aaa;
             max-width: 300px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-size: 14px;
         }
         
         .bookmark-actions {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             justify-content: flex-end;
         }
         
         .action-btn {
             background: none;
             border: none;
-            color: #8a8ab5;
+            color: #ccc;
             cursor: pointer;
-            padding: 6px 10px;
-            border-radius: 5px;
-            font-size: 15px;
-            transition: all 0.2s;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 14px;
         }
         
         .action-btn:hover {
             color: var(--primary-color);
-            background-color: rgba(255, 255, 255, 0.08);
-            transform: scale(1.1);
+            background-color: rgba(255, 255, 255, 0.1);
         }
         
-        /* 表单容器 */
+        /* 表单样式更新 */
         .form-container {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: rgba(0, 0, 0, 0.85);
+            background-color: rgba(0, 0, 0, 0.7);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -364,7 +335,6 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s;
-            backdrop-filter: blur(5px);
         }
         
         .form-container.active {
@@ -373,95 +343,57 @@
         }
         
         .add-form {
-            background: linear-gradient(135deg, #252536, #2d2d44);
-            padding: 30px;
-            border-radius: 12px;
-            border: 1px solid rgba(74, 108, 247, 0.3);
+            background-color: var(--secondary-color);
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
             width: 100%;
             max-width: 500px;
             transform: translateY(20px);
             transition: transform 0.3s;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
         
         .form-container.active .add-form {
             transform: translateY(0);
         }
         
-        .form-header {
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: var(--primary-color);
-        }
-        
-        .form-header i {
-            font-size: 24px;
-        }
-        
-        .form-header h3 {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-        
         .form-row {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .form-row label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
             font-weight: 500;
-            font-size: 15px;
-            color: #c0c0e0;
+            font-size: 14px;
         }
         
         input[type="text"], 
         input[type="url"],
         input[type="password"] {
             width: 100%;
-            padding: 12px 15px;
-            border: 1px solid rgba(74, 108, 247, 0.3);
-            border-radius: 8px;
-            background: rgba(30, 30, 45, 0.7);
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-color);
             color: var(--text-color);
-            font-size: 15px;
-            transition: border 0.3s;
-        }
-        
-        input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.2);
         }
         
         select {
             width: 100%;
-            padding: 12px 15px;
-            border: 1px solid rgba(74, 108, 247, 0.3);
-            border-radius: 8px;
-            background: rgba(30, 30, 45, 0.7);
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-color);
             color: var(--text-color);
-            font-size: 15px;
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8ab5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 15px center;
-            background-size: 16px;
-        }
-        
-        select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.2);
         }
         
         .form-actions {
             display: flex;
             justify-content: flex-end;
-            gap: 15px;
-            margin-top: 25px;
+            gap: 10px;
+            margin-top: 20px;
         }
         
         .auth-container {
@@ -470,7 +402,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, #0f0c29, #302b63);
+            background-color: rgba(0, 0, 0, 0.8);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -478,22 +410,19 @@
         }
         
         .auth-box {
-            background: rgba(30, 30, 45, 0.9);
-            padding: 40px;
-            border-radius: 12px;
+            background-color: var(--secondary-color);
+            padding: 30px;
+            border-radius: 8px;
             width: 100%;
-            max-width: 450px;
+            max-width: 400px;
             text-align: center;
-            border: 1px solid rgba(74, 108, 247, 0.3);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
         }
         
         .auth-title {
             color: var(--primary-color);
-            margin-bottom: 30px;
-            font-size: 1.8rem;
-            font-weight: 600;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
         }
         
         .hidden {
@@ -504,10 +433,10 @@
             border: 4px solid rgba(255, 255, 255, 0.1);
             border-radius: 50%;
             border-top: 4px solid var(--primary-color);
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
-            margin: 30px auto;
+            margin: 20px auto;
         }
         
         @keyframes spin {
@@ -517,135 +446,124 @@
         
         .error-message {
             color: var(--error-color);
-            margin-top: 15px;
-            font-size: 15px;
+            margin-top: 10px;
+            font-size: 14px;
         }
         
         .empty-state {
             text-align: center;
-            padding: 50px 20px;
-            color: #8a8ab5;
+            padding: 40px 20px;
+            color: #9aa0a6;
         }
         
         .empty-state i {
-            font-size: 60px;
-            opacity: 0.5;
-            margin-bottom: 20px;
+            font-size: 48px;
+            opacity: 0.3;
+            margin-bottom: 15px;
             color: var(--primary-color);
         }
         
         .empty-state h3 {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-            color: #e0e0ff;
-            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: var(--text-color);
         }
         
         .empty-state p {
-            font-size: 16px;
-            max-width: 500px;
-            margin: 0 auto;
+            font-size: 14px;
         }
         
         /* 子文件夹卡片样式 */
         .subfolders-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 20px;
-            padding: 20px;
+            gap: 15px;
+            padding: 15px;
             margin-bottom: 15px;
             border-bottom: 1px solid var(--border-color);
         }
         
         .folder-card {
-            background: linear-gradient(135deg, #2d2d44, #252536);
-            border: 1px solid rgba(74, 108, 247, 0.2);
-            border-radius: 10px;
-            padding: 20px;
-            width: 200px;
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            width: 180px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             position: relative;
-            overflow: hidden;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
         
         .folder-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 25px rgba(74, 108, 247, 0.3);
-            border-color: rgba(74, 108, 247, 0.5);
+            background-color: rgba(0, 123, 255, 0.1);
+            border-color: var(--primary-color);
+            transform: translateY(-3px);
         }
         
         .folder-card-icon {
-            font-size: 3rem;
+            font-size: 2.5rem;
             color: var(--primary-color);
             text-align: center;
-            margin-bottom: 15px;
-            opacity: 0.8;
+            margin-bottom: 10px;
         }
         
         .folder-card-name {
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 500;
             text-align: center;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            margin-bottom: 20px;
-            color: #e0e0ff;
+            margin-bottom: 15px;
         }
         
         .folder-card-actions {
             display: flex;
             justify-content: space-around;
-            border-top: 1px solid rgba(74, 108, 247, 0.2);
-            padding-top: 15px;
-            margin-top: 10px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 12px;
+            margin-top: 8px;
         }
         
         .folder-card-action {
             background: none;
             border: none;
-            color: #8a8ab5;
+            color: #aaa;
             cursor: pointer;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 16px;
-            transition: all 0.2s;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
         }
         
         .folder-card-action:hover {
             color: var(--primary-color);
-            background-color: rgba(255, 255, 255, 0.08);
-            transform: scale(1.1);
+            background-color: rgba(255, 255, 255, 0.1);
         }
         
         /* 悬浮提示样式 */
         .toast-container {
             position: fixed;
-            left: 25px;
-            bottom: 25px;
+            left: 20px;
+            bottom: 20px;
             z-index: 2000;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
         }
         
         .toast {
-            padding: 18px 25px;
-            background: rgba(45, 45, 57, 0.95);
+            padding: 16px 24px;
+            background-color: #333;
             color: white;
-            border-radius: 8px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             opacity: 0;
             transform: translateY(20px);
             transition: opacity 0.3s, transform 0.3s;
-            max-width: 450px;
+            max-width: 400px;
             display: flex;
             align-items: center;
             animation: slideIn 0.3s forwards;
-            border-left: 4px solid var(--primary-color);
-            backdrop-filter: blur(5px);
         }
         
         .toast.show {
@@ -654,30 +572,31 @@
         }
         
         .toast.error {
-            border-left-color: var(--error-color);
+            background-color: var(--error-color);
         }
         
         .toast.success {
-            border-left-color: var(--success-color);
+            background-color: var(--success-color);
         }
         
         .toast.warning {
-            border-left-color: var(--warning-color);
+            background-color: #ffc107;
+            color: #333;
         }
         
         .toast.info {
-            border-left-color: var(--primary-color);
+            background-color: var(--primary-color);
         }
         
         .toast-icon {
-            margin-right: 15px;
-            font-size: 24px;
+            margin-right: 12px;
+            font-size: 20px;
         }
         
         .toast-message {
             flex: 1;
-            font-size: 15px;
-            line-height: 1.5;
+            font-size: 14px;
+            line-height: 1.4;
         }
         
         @keyframes slideIn {
@@ -691,33 +610,15 @@
             }
         }
         
-        .sync-status {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            color: #8a8ab5;
-        }
-        
-        .sync-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #2ed573;
-        }
-        
-        .sync-indicator.syncing {
-            background-color: #ffa502;
-            animation: pulse 1.5s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 0.5; }
-            50% { opacity: 1; }
-            100% { opacity: 0.5; }
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(20px);
+            }
         }
     </style>
 </head>
@@ -728,7 +629,7 @@
     <!-- 认证界面 -->
     <div id="auth-container" class="auth-container">
         <div class="auth-box">
-            <h2 class="auth-title"><i class="fas fa-lock"></i> 加密书签管理器</h2>
+            <h2 class="auth-title">加密书签管理器</h2>
             <div class="form-row">
                 <input type="password" id="password" placeholder="请输入密码..." autocomplete="current-password">
             </div>
@@ -742,10 +643,6 @@
     <div id="app-container" class="hidden">
         <div class="header">
             <h1><i class="fas fa-bookmark"></i> 加密书签管理器</h1>
-            <div class="sync-status">
-                <div class="sync-indicator" id="sync-indicator"></div>
-                <span id="sync-text">已同步</span>
-            </div>
             <button id="logout-btn" class="btn"><i class="fas fa-lock"></i> 锁定</button>
         </div>
         
@@ -753,7 +650,7 @@
             <!-- 左侧文件夹树 -->
             <div class="sidebar">
                 <div class="sidebar-header">
-                    <span><i class="fas fa-folder-tree"></i> 书签目录</span>
+                    <span><i class="fas fa-folder"></i> 书签目录</span>
                 </div>
                 <div class="folder-tree-container">
                     <div class="folder-tree" id="folder-tree">
@@ -815,10 +712,7 @@
     <!-- 添加书签表单 -->
     <div id="add-bookmark-form-container" class="form-container">
         <div class="add-form">
-            <div class="form-header">
-                <i class="fas fa-bookmark"></i>
-                <h3>添加新书签</h3>
-            </div>
+            <h3 style="margin-bottom: 20px; color: var(--primary-color);"><i class="fas fa-bookmark"></i> 添加新书签</h3>
             <div class="form-row">
                 <label for="bm-title"><i class="fas fa-heading"></i> 书签标题</label>
                 <input type="text" id="bm-title" placeholder="输入书签标题">
@@ -843,10 +737,7 @@
     <!-- 编辑书签表单 -->
     <div id="edit-bookmark-form-container" class="form-container">
         <div class="add-form">
-            <div class="form-header">
-                <i class="fas fa-edit"></i>
-                <h3>编辑书签</h3>
-            </div>
+            <h3 style="margin-bottom: 20px; color: var(--primary-color);"><i class="fas fa-edit"></i> 编辑书签</h3>
             <div class="form-row">
                 <label for="edit-bm-title"><i class="fas fa-heading"></i> 书签标题</label>
                 <input type="text" id="edit-bm-title" placeholder="输入书签标题">
@@ -871,10 +762,7 @@
     <!-- 添加文件夹表单 -->
     <div id="add-folder-form-container" class="form-container">
         <div class="add-form">
-            <div class="form-header">
-                <i class="fas fa-folder-plus"></i>
-                <h3>添加新文件夹</h3>
-            </div>
+            <h3 style="margin-bottom: 20px; color: var(--primary-color);"><i class="fas fa-folder-plus"></i> 添加新文件夹</h3>
             <div class="form-row">
                 <label for="folder-name"><i class="fas fa-folder"></i> 文件夹名称</label>
                 <input type="text" id="folder-name" placeholder="输入文件夹名称">
@@ -930,8 +818,6 @@
         const addBookmarkFormContainer = document.getElementById('add-bookmark-form-container');
         const editBookmarkFormContainer = document.getElementById('edit-bookmark-form-container');
         const addFolderFormContainer = document.getElementById('add-folder-form-container');
-        const syncIndicator = document.getElementById('sync-indicator');
-        const syncText = document.getElementById('sync-text');
 
         // 全局变量
         let encryptionKey = null;
@@ -940,9 +826,6 @@
         let currentFolderId = 'root';
         let editingBookmarkId = null;
         let folderPathMap = {};
-        let lastSyncTime = 0;
-        let currentETag = null;
-        let isSyncing = false;
 
         // 生成唯一ID
         function generateId() {
@@ -996,45 +879,16 @@
             }, duration);
         }
 
-        // 更新同步状态
-        function updateSyncStatus(syncing) {
-            isSyncing = syncing;
-            if (syncing) {
-                syncIndicator.classList.add('syncing');
-                syncText.textContent = '同步中...';
-                syncText.style.color = '#ffa502';
-            } else {
-                syncIndicator.classList.remove('syncing');
-                syncText.textContent = '已同步';
-                syncText.style.color = '#2ed573';
-            }
-        }
-
         // 从Gist获取数据
         async function fetchGist() {
-            updateSyncStatus(true);
             toggleLoader(authLoader, true);
             authError.textContent = '';
-            
             try {
                 const response = await fetch(GIST_URL, {
-                    headers: { 
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'If-None-Match': currentETag || ''
-                    }
+                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
                 });
-                
-                if (response.status === 304) {
-                    // 数据未修改
-                    updateSyncStatus(false);
-                    return null;
-                }
-                
                 if (!response.ok) throw new Error(`GitHub API错误: ${response.statusText}`);
-                
                 const gist = await response.json();
-                currentETag = response.headers.get('ETag');
-                
                 return gist.files['bookmarks.json'].content;
             } catch (error) {
                 console.error('获取Gist失败:', error);
@@ -1042,86 +896,35 @@
                 return null;
             } finally {
                 toggleLoader(authLoader, false);
-                updateSyncStatus(false);
             }
         }
 
         // 更新Gist数据
         async function updateGist() {
-            updateSyncStatus(true);
             try {
                 const data = {
                     folders: folders,
-                    bookmarks: bookmarks,
-                    lastModified: Date.now()
+                    bookmarks: bookmarks
                 };
-                
                 const encryptedData = encrypt(JSON.stringify(data), encryptionKey);
-                
-                const headers = {
-                    'Authorization': `token ${GITHUB_TOKEN}`,
-                    'Content-Type': 'application/json',
-                    'If-Match': currentETag || ''
-                };
                 
                 const response = await fetch(GIST_URL, {
                     method: 'PATCH',
-                    headers: headers,
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
                         files: { 'bookmarks.json': { content: encryptedData } }
                     })
                 });
                 
-                if (response.status === 412) {
-                    // 数据已被修改，需要重新获取
-                    showToast('数据已被其他设备修改，正在重新同步...', 'warning');
-                    await syncData();
-                    return false;
-                }
-                
                 if (!response.ok) throw new Error('更新Gist失败');
-                
-                currentETag = response.headers.get('ETag');
-                lastSyncTime = Date.now();
                 return true;
             } catch (error) {
                 console.error('更新Gist失败:', error);
                 showToast('保存书签失败！', 'error');
                 return false;
-            } finally {
-                updateSyncStatus(false);
-            }
-        }
-
-        // 同步数据
-        async function syncData() {
-            const content = await fetchGist();
-            if (content === null) return; // 数据未修改
-            
-            try {
-                const decrypted = decrypt(content, encryptionKey);
-                if (!decrypted) throw new Error('解密失败');
-                
-                const remoteData = JSON.parse(decrypted);
-                
-                // 合并数据
-                if (remoteData.lastModified > lastSyncTime) {
-                    // 保留本地未保存的更改（如果有）
-                    bookmarks = [...remoteData.bookmarks, ...bookmarks.filter(bm => 
-                        !remoteData.bookmarks.some(rbm => rbm.id === bm.id))
-                    ];
-                    
-                    folders = [...remoteData.folders, ...folders.filter(f => 
-                        !remoteData.folders.some(rf => rf.id === f.id))
-                    ];
-                    
-                    lastSyncTime = remoteData.lastModified;
-                    showToast('数据已从服务器同步', 'success');
-                    renderApp();
-                }
-            } catch (e) {
-                console.error('同步数据失败:', e);
-                showToast('同步数据失败', 'error');
             }
         }
 
@@ -1361,7 +1164,7 @@
         }
 
         // 添加书签
-        async function addBookmark() {
+        function addBookmark() {
             const title = document.getElementById('bm-title').value.trim();
             const url = document.getElementById('bm-url').value.trim();
             const folderId = document.getElementById('bm-folder').value;
@@ -1376,29 +1179,23 @@
                 return;
             }
             
-            // 同步数据
-            await syncData();
-            
             bookmarks.push({
                 id: generateId(),
                 title: title,
                 url: url,
-                folderId: folderId,
-                timestamp: Date.now()
+                folderId: folderId
             });
             
             hideAllForms();
             document.getElementById('bm-title').value = '';
             document.getElementById('bm-url').value = '';
             
-            if (await updateGist()) {
-                showToast('书签添加成功！', 'success');
-                renderApp();
-            }
+            saveAndRender();
+            showToast('书签添加成功！', 'success');
         }
 
         // 添加文件夹
-        async function addFolder() {
+        function addFolder() {
             const name = document.getElementById('folder-name').value.trim();
             const parentId = document.getElementById('parent-folder').value;
             
@@ -1407,24 +1204,18 @@
                 return;
             }
             
-            // 同步数据
-            await syncData();
-            
             folders.push({
                 id: generateId(),
                 name: name,
                 parentId: parentId,
-                expanded: parentId === 'root',
-                timestamp: Date.now()
+                expanded: parentId === 'root' // 根目录下的文件夹默认展开
             });
             
             hideAllForms();
             document.getElementById('folder-name').value = '';
             
-            if (await updateGist()) {
-                showToast('文件夹创建成功！', 'success');
-                renderApp();
-            }
+            saveAndRender();
+            showToast('文件夹创建成功！', 'success');
         }
 
         // 编辑文件夹
@@ -1455,9 +1246,6 @@
         async function deleteFolder(event, folderId) {
             event.stopPropagation();
             
-            // 同步数据
-            await syncData();
-            
             // 检查是否有子文件夹
             const hasChildren = folders.some(f => f.parentId === folderId);
             if (hasChildren) {
@@ -1479,10 +1267,8 @@
                 currentFolderId = 'root';
             }
             
-            if (await updateGist()) {
-                showToast('文件夹已删除', 'success');
-                renderApp();
-            }
+            await saveAndRender();
+            showToast('文件夹已删除', 'success');
         }
 
         // 编辑书签
@@ -1510,7 +1296,7 @@
         }
 
         // 更新书签
-        async function updateBookmark() {
+        function updateBookmark() {
             const title = document.getElementById('edit-bm-title').value.trim();
             const url = document.getElementById('edit-bm-url').value.trim();
             const folderId = document.getElementById('edit-bm-folder').value;
@@ -1525,31 +1311,22 @@
                 return;
             }
             
-            // 同步数据
-            await syncData();
-            
             const index = bookmarks.findIndex(b => b.id === editingBookmarkId);
             if (index !== -1) {
                 bookmarks[index].title = title;
                 bookmarks[index].url = url;
                 bookmarks[index].folderId = folderId;
-                bookmarks[index].timestamp = Date.now();
             }
             
             hideAllForms();
             editingBookmarkId = null;
             
-            if (await updateGist()) {
-                showToast('书签更新成功！', 'success');
-                renderApp();
-            }
+            saveAndRender();
+            showToast('书签更新成功！', 'success');
         }
 
         // 打开所有书签
-        async function openAllBookmarks() {
-            // 先同步数据
-            await syncData();
-            
+        function openAllBookmarks() {
             function getBookmarksInFolder(folderId) {
                 let allBookmarks = [];
                 
@@ -1641,10 +1418,8 @@
                     // 创建根目录
                     folders = [];
                     bookmarks = [];
-                    lastSyncTime = Date.now();
                     await updateGist();
                     showAppView();
-                    showToast('书签库创建成功！', 'success');
                 }
             } else {
                 try {
@@ -1654,7 +1429,6 @@
                     const data = JSON.parse(decrypted);
                     folders = data.folders || [];
                     bookmarks = data.bookmarks || [];
-                    lastSyncTime = data.lastModified || Date.now();
                     
                     // 确保根目录展开
                     if (folders.length > 0) {
@@ -1691,15 +1465,9 @@
 
         // 删除书签
         async function deleteBookmark(id) {
-            // 同步数据
-            await syncData();
-            
             bookmarks = bookmarks.filter(bm => bm.id !== id);
-            
-            if (await updateGist()) {
-                showToast('书签已删除', 'success');
-                renderApp();
-            }
+            await saveAndRender();
+            showToast('书签已删除', 'success');
         }
 
         // 事件监听器
@@ -1766,13 +1534,6 @@
 
         // 初始显示认证界面
         showAuthView();
-        
-        // 定期同步数据（每5分钟）
-        setInterval(async () => {
-            if (encryptionKey) {
-                await syncData();
-            }
-        }, 5 * 60 * 1000);
     </script>
 </body>
 </html>
