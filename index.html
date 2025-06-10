@@ -193,6 +193,7 @@
             padding: 10px 15px;
             border-bottom: 1px solid var(--border-color);
             background-color: var(--secondary-color);
+            flex-wrap: wrap;
         }
         
         .path-segment {
@@ -275,6 +276,15 @@
         
         .bookmark-row:hover {
             background-color: var(--row-hover);
+        }
+
+        .trash-item-path {
+            font-size: 12px;
+            color: #999;
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .bookmark-title {
@@ -426,7 +436,7 @@
         }
         
         .hidden {
-            display: none;
+            display: none !important;
         }
         
         .loader {
@@ -492,6 +502,9 @@
             cursor: pointer;
             transition: all 0.2s;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         
         .folder-card:hover {
@@ -500,6 +513,10 @@
             transform: translateY(-3px);
         }
         
+        .folder-card-content {
+            flex-grow: 1;
+        }
+
         .folder-card-icon {
             font-size: 2.5rem;
             color: var(--primary-color);
@@ -628,39 +645,45 @@
 
         .dragging {
             opacity: 0.5;
-            border: 2px dashed var(--primary-color);
+            background: var(--secondary-color);
+            border: 1px dashed var(--primary-color);
         }
-
-        .drop-target {
-            background-color: rgba(0, 123, 255, 0.2);
-        }
-
-        .drop-between {
-            height: 4px;
-            background-color: var(--primary-color);
-            margin: 2px 0;
-        }
-
+        
+        /* 高亮目标文件夹 */
         .drop-inside {
-            box-shadow: 0 0 0 2px var(--primary-color) inset;
+            box-shadow: 0 0 0 2px var(--primary-color) inset !important;
+            background-color: rgba(0, 123, 255, 0.1) !important;
         }
-
-        .folder-card.drop-target {
-            background-color: rgba(0, 123, 255, 0.2);
-        }
-
+        
+        /* 高亮插入间隙 */
         .drop-indicator {
-            height: 4px;
-            background-color: var(--primary-color);
-            margin: 2px 0;
+            height: 0;
+            padding: 0;
+            border-top: 3px solid var(--primary-color);
+            animation: pulse 1.5s infinite;
         }
+        
+        .drop-indicator td {
+            padding: 0;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
     </style>
 </head>
 <body>
-    <!-- 悬浮提示容器 -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- 认证界面 -->
     <div id="auth-container" class="auth-container">
         <div class="auth-box">
             <h2 class="auth-title">加密书签管理器</h2>
@@ -673,7 +696,6 @@
         </div>
     </div>
 
-    <!-- 主界面 -->
     <div id="app-container" class="hidden">
         <div class="header">
             <h1><i class="fas fa-bookmark"></i> 加密书签管理器</h1>
@@ -681,30 +703,32 @@
         </div>
         
         <div class="main-container">
-            <!-- 左侧文件夹树 -->
             <div class="sidebar">
                 <div class="sidebar-header">
                     <span><i class="fas fa-folder"></i> 书签目录</span>
                 </div>
                 <div class="folder-tree-container">
-                    <div class="folder-tree" id="folder-tree">
-                        <!-- 根目录项 -->
-                        <div class="folder-item active" data-id="root" onclick="selectFolder('root')">
-                            <span class="folder-icon">
-                                <i class="fas fa-folder-open"></i>
-                            </span>
+                    <div id="folder-tree-static-items">
+                        <div class="folder-item" data-id="root" onclick="selectFolder('root')">
+                            <span class="folder-icon"><i class="fas fa-folder-open"></i></span>
                             <span class="folder-name">所有书签</span>
                         </div>
-                        <!-- 文件夹树将通过JS动态生成 -->
+                    </div>
+                    <div class="folder-tree" id="folder-tree">
+                        </div>
+                    <div id="trash-item-container" style="border-top: 1px solid var(--border-color); margin-top: 10px; padding-top: 10px;">
+                         <div class="folder-item" data-id="trash" onclick="selectFolder('trash')">
+                            <span class="folder-icon"><i class="fas fa-trash"></i></span>
+                            <span class="folder-name">回收站</span>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <!-- 右侧内容区域 -->
             <div class="content">
                 <div class="toolbar">
                     <div class="current-folder">
-                        <i class="fas fa-folder-open"></i>
+                        <i id="current-folder-icon" class="fas fa-folder-open"></i>
                         <span id="current-folder-name">所有书签</span>
                     </div>
                     <div class="btn-group">
@@ -714,20 +738,15 @@
                     </div>
                 </div>
                 
-                <!-- 文件夹路径 -->
                 <div class="folder-path" id="folder-path">
-                    <div class="path-segment" onclick="selectFolder('root')">所有书签</div>
-                </div>
+                    </div>
                 
-                <!-- 子文件夹列表 -->
                 <div class="subfolders-container" id="subfolders-container">
-                    <!-- 子文件夹将通过JS动态生成 -->
-                </div>
+                    </div>
                 
-                <!-- 书签列表 -->
                 <div class="bookmark-list-container">
                     <table class="bookmark-table">
-                        <thead>
+                        <thead id="bookmark-table-header">
                             <tr>
                                 <th style="width: 30%;">网站名称</th>
                                 <th style="width: 50%;">网址</th>
@@ -735,18 +754,17 @@
                             </tr>
                         </thead>
                         <tbody id="bookmark-list">
-                            <!-- 书签将通过JS动态生成 -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 添加书签表单 -->
-    <div id="add-bookmark-form-container" class="form-container">
+    <div id="bookmark-form-container" class="form-container">
         <div class="add-form">
-            <h3 style="margin-bottom: 20px; color: var(--primary-color);"><i class="fas fa-bookmark"></i> 添加新书签</h3>
+            <h3 id="bookmark-form-title" style="margin-bottom: 20px; color: var(--primary-color);"></h3>
+            <input type="hidden" id="bm-id">
             <div class="form-row">
                 <label for="bm-title"><i class="fas fa-heading"></i> 书签标题</label>
                 <input type="text" id="bm-title" placeholder="输入书签标题">
@@ -758,67 +776,40 @@
             <div class="form-row">
                 <label for="bm-folder"><i class="fas fa-folder"></i> 文件夹</label>
                 <select id="bm-folder">
-                    <option value="root">所有书签</option>
-                </select>
+                    </select>
             </div>
             <div class="form-actions">
-                <button id="cancel-add" class="btn btn-outline">取消</button>
-                <button id="save-bookmark" class="btn">保存书签</button>
+                <button id="cancel-bookmark-form" class="btn btn-outline">取消</button>
+                <button id="save-bookmark-form" class="btn">保存</button>
             </div>
         </div>
     </div>
     
-    <!-- 编辑书签表单 -->
-    <div id="edit-bookmark-form-container" class="form-container">
+    <div id="folder-form-container" class="form-container">
         <div class="add-form">
-            <h3 style="margin-bottom: 20px; color: var(--primary-color);"><i class="fas fa-edit"></i> 编辑书签</h3>
-            <div class="form-row">
-                <label for="edit-bm-title"><i class="fas fa-heading"></i> 书签标题</label>
-                <input type="text" id="edit-bm-title" placeholder="输入书签标题">
-            </div>
-            <div class="form-row">
-                <label for="edit-bm-url"><i class="fas fa-link"></i> 书签网址</label>
-                <input type="url" id="edit-bm-url" placeholder="https://...">
-            </div>
-            <div class="form-row">
-                <label for="edit-bm-folder"><i class="fas fa-folder"></i> 文件夹</label>
-                <select id="edit-bm-folder">
-                    <option value="root">所有书签</option>
-                </select>
-            </div>
-            <div class="form-actions">
-                <button id="cancel-edit" class="btn btn-outline">取消</button>
-                <button id="update-bookmark" class="btn">更新书签</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 添加文件夹表单 -->
-    <div id="add-folder-form-container" class="form-container">
-        <div class="add-form">
-            <h3 style="margin-bottom: 20px; color: var(--primary-color);"><i class="fas fa-folder-plus"></i> 添加新文件夹</h3>
+            <h3 id="folder-form-title" style="margin-bottom: 20px; color: var(--primary-color);"></h3>
+            <input type="hidden" id="folder-id">
             <div class="form-row">
                 <label for="folder-name"><i class="fas fa-folder"></i> 文件夹名称</label>
                 <input type="text" id="folder-name" placeholder="输入文件夹名称">
             </div>
             <div class="form-row">
-                <label for="parent-folder"><i class="fas fa-folder-tree"></i> 父文件夹</label>
+                <label for="parent-folder"><i class="fas fa-sitemap"></i> 父文件夹</label>
                 <select id="parent-folder">
-                    <option value="root">所有书签</option>
-                </select>
+                    </select>
             </div>
             <div class="form-actions">
-                <button id="cancel-folder" class="btn btn-outline">取消</button>
-                <button id="save-folder" class="btn">创建文件夹</button>
+                <button id="cancel-folder-form" class="btn btn-outline">取消</button>
+                <button id="save-folder-form" class="btn">保存</button>
             </div>
         </div>
     </div>
 
     <script>
         // --- 用户配置 ---
-        const GIST_ID = "16bea01441ec8fba4df2d299162dc7e3";
-        const GITHUB_TOKEN_str = "pwrx9hT4JmyKjmMsMSt1zoI6rmKzMR0W9Wpk";
-        const GITHUB_TOKEN = "ghp_" + GITHUB_TOKEN_str;
+        const GIST_ID = "16bea01441ec8fba4df2d299162dc7e3"; // 请替换为你的 Gist ID
+        const GITHUB_TOKEN_HEAD = "ghp_";
+        const GITHUB_TOKEN = GITHUB_TOKEN_HEAD + "pwrx9hT4JmyKjmMsMSt1zoI6rmKzMR0W9Wpk"; // 请替换为你的 GitHub Personal Access Token
         // --- 配置结束 ---
 
         const GIST_URL = `https://api.github.com/gists/${GIST_ID}`;
@@ -832,909 +823,672 @@
         const authLoader = document.getElementById('auth-loader');
         const authError = document.getElementById('auth-error');
         const bookmarkList = document.getElementById('bookmark-list');
+        const bookmarkTableHeader = document.getElementById('bookmark-table-header');
         const folderTree = document.getElementById('folder-tree');
         const currentFolderName = document.getElementById('current-folder-name');
+        const currentFolderIcon = document.getElementById('current-folder-icon');
         const folderPath = document.getElementById('folder-path');
         const subfoldersContainer = document.getElementById('subfolders-container');
         const addBookmarkBtn = document.getElementById('add-bookmark-btn');
         const addFolderBtn = document.getElementById('add-folder-btn');
         const openAllBtn = document.getElementById('open-all-btn');
-        const saveBookmarkBtn = document.getElementById('save-bookmark');
-        const updateBookmarkBtn = document.getElementById('update-bookmark');
-        const cancelAddBtn = document.getElementById('cancel-add');
-        const cancelEditBtn = document.getElementById('cancel-edit');
-        const cancelFolderBtn = document.getElementById('cancel-folder');
-        const saveFolderBtn = document.getElementById('save-folder');
-        const bmFolderSelect = document.getElementById('bm-folder');
-        const editBmFolderSelect = document.getElementById('edit-bm-folder');
-        const parentFolderSelect = document.getElementById('parent-folder');
         const toastContainer = document.getElementById('toast-container');
-        const addBookmarkFormContainer = document.getElementById('add-bookmark-form-container');
-        const editBookmarkFormContainer = document.getElementById('edit-bookmark-form-container');
-        const addFolderFormContainer = document.getElementById('add-folder-form-container');
+        
+        // Form Doms
+        const bookmarkFormContainer = document.getElementById('bookmark-form-container');
+        const folderFormContainer = document.getElementById('folder-form-container');
+        const bmFolderSelect = document.getElementById('bm-folder');
+        const parentFolderSelect = document.getElementById('parent-folder');
+
 
         // 全局变量
         let encryptionKey = null;
         let bookmarks = [];
         let folders = [];
+        let trash = []; // 回收站
         let currentFolderId = 'root';
-        let editingBookmarkId = null;
         let folderPathMap = {};
-        let draggedElement = null;
-        let dropTarget = null;
-        let dropPosition = null; // 'before', 'after', 'inside'
+        let draggedElementInfo = null;
+        let dropIndicator = null;
 
-        // 生成唯一ID
-        function generateId() {
-            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-        }
 
-        // 加密函数
-        function encrypt(text, key) {
-            return CryptoJS.AES.encrypt(text, key).toString();
-        }
-
-        // 解密函数
+        // --- 核心功能 ---
+        function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 9); }
+        function encrypt(text, key) { return CryptoJS.AES.encrypt(text, key).toString(); }
         function decrypt(ciphertext, key) {
-            const bytes = CryptoJS.AES.decrypt(ciphertext, key);
-            return bytes.toString(CryptoJS.enc.Utf8);
+            try {
+                const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+                return bytes.toString(CryptoJS.enc.Utf8);
+            } catch (e) { return ''; }
         }
 
-        // 显示悬浮提示
-        function showToast(message, type = 'info', duration = 3000) {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            
-            let icon = '';
-            switch(type) {
-                case 'error': icon = '<i class="fas fa-exclamation-circle toast-icon"></i>'; break;
-                case 'success': icon = '<i class="fas fa-check-circle toast-icon"></i>'; break;
-                case 'warning': icon = '<i class="fas fa-exclamation-triangle toast-icon"></i>'; break;
-                default: icon = '<i class="fas fa-info-circle toast-icon"></i>';
-            }
-            
-            toast.innerHTML = `
-                ${icon}
-                <div class="toast-message">${message}</div>
-            `;
-            
-            toastContainer.appendChild(toast);
-            
-            // 触发动画
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 10);
-            
-            // 自动移除
-            setTimeout(() => {
-                toast.classList.remove('show');
-                toast.style.animation = 'fadeOut 0.3s forwards';
-                
-                setTimeout(() => {
-                    toastContainer.removeChild(toast);
-                }, 300);
-            }, duration);
-        }
-
-        // 从Gist获取数据
+        // --- API 调用 ---
         async function fetchGist() {
             toggleLoader(authLoader, true);
             authError.textContent = '';
             try {
-                const response = await fetch(GIST_URL, {
-                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-                });
-                if (!response.ok) throw new Error(`GitHub API错误: ${response.statusText}`);
+                const response = await fetch(GIST_URL, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
+                if (!response.ok) throw new Error(`GitHub API Error: ${response.statusText}`);
                 const gist = await response.json();
+                if (!gist.files || !gist.files['bookmarks.json']) {
+                     showToast('Gist中未找到 bookmarks.json 文件。', 'warning');
+                     return '{}'; // 返回一个空对象字符串，以便可以创建新的
+                }
                 return gist.files['bookmarks.json'].content;
             } catch (error) {
-                console.error('获取Gist失败:', error);
-                showToast('获取数据失败。请检查Gist ID和Token是否正确。', 'error');
+                console.error('Fetch Gist failed:', error);
+                showToast('获取数据失败。请检查Gist ID和Token。', 'error');
                 return null;
             } finally {
                 toggleLoader(authLoader, false);
             }
         }
 
-        // 更新Gist数据
         async function updateGist() {
             try {
-                const data = {
-                    folders: folders,
-                    bookmarks: bookmarks
-                };
+                const data = { folders, bookmarks, trash };
                 const encryptedData = encrypt(JSON.stringify(data), encryptionKey);
                 
                 const response = await fetch(GIST_URL, {
                     method: 'PATCH',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        files: { 'bookmarks.json': { content: encryptedData } }
-                    })
+                    headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: { 'bookmarks.json': { content: encryptedData } } })
                 });
-                
-                if (!response.ok) throw new Error('更新Gist失败');
+                if (!response.ok) throw new Error('Update Gist failed');
                 return true;
             } catch (error) {
-                console.error('更新Gist失败:', error);
-                showToast('保存书签失败！', 'error');
+                console.error('Update Gist failed:', error);
+                showToast('保存失败，请检查网络或Token权限。', 'error');
                 return false;
             }
         }
-
-        // 构建文件夹路径映射
-        function buildFolderPathMap() {
-            folderPathMap = {};
-            const buildPath = (folderId, path) => {
-                if (folderId === 'root') {
-                    folderPathMap['root'] = { name: '所有书签', id: 'root' };
-                    return;
-                }
-                
-                const folder = folders.find(f => f.id === folderId);
-                if (!folder) return;
-                
-                const fullPath = [...path, { id: folder.id, name: folder.name }];
-                folderPathMap[folder.id] = fullPath;
-                
-                const children = folders.filter(f => f.parentId === folderId);
-                children.forEach(child => buildPath(child.id, fullPath));
-            };
-            
-            // 从根目录开始构建
-            const rootChildren = folders.filter(f => f.parentId === 'root');
-            rootChildren.forEach(folder => buildPath(folder.id, [{ id: 'root', name: '所有书签' }]));
+        
+        // --- 渲染逻辑 ---
+        function renderApp() {
+            buildFolderPathMap();
+            renderFolderTreeUI();
+            selectFolder(currentFolderId, true); // 强制刷新视图
         }
 
-        // 渲染文件夹路径
-        function renderFolderPath() {
-            let pathItems = [];
-            
-            if (currentFolderId === 'root') {
-                pathItems = [{ id: 'root', name: '所有书签' }];
-            } else {
-                const path = folderPathMap[currentFolderId];
-                if (path) {
-                    pathItems = path;
-                } else {
-                    // 如果路径不存在，尝试构建它
-                    buildFolderPathMap();
-                    const newPath = folderPathMap[currentFolderId];
-                    pathItems = newPath || [{ id: 'root', name: '所有书签' }];
-                }
-            }
-            
-            let html = '';
-            pathItems.forEach((item, index) => {
-                html += `<div class="path-segment" onclick="selectFolder('${item.id}')">${item.name}</div>`;
-                if (index < pathItems.length - 1) {
-                    html += `<div class="path-divider">/</div>`;
-                }
-            });
-            
-            folderPath.innerHTML = html;
-        }
-
-        // 渲染子文件夹
-        function renderSubfolders() {
-            const subfolders = folders.filter(folder => folder.parentId === currentFolderId);
-            
-            if (subfolders.length === 0) {
-                subfoldersContainer.innerHTML = '';
-                return;
-            }
-            
-            let html = '';
-            subfolders.forEach(folder => {
-                html += `
-                    <div class="folder-card" data-id="${folder.id}" draggable="true"
-                         ondragstart="onFolderDragStart(event, '${folder.id}')"
-                         ondragover="onFolderDragOver(event, '${folder.id}')"
-                         ondragleave="onFolderDragLeave(event, '${folder.id}')"
-                         ondrop="onFolderDrop(event, '${folder.id}')">
-                        <div class="folder-card-icon">
-                            <i class="fas fa-folder"></i>
-                        </div>
-                        <div class="folder-card-name">${folder.name}</div>
-                        <div class="folder-card-actions" onclick="event.stopPropagation()">
-                            <button class="folder-card-action" onclick="deleteFolder(event, '${folder.id}')" title="删除">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                            <button class="folder-card-action" onclick="editFolder('${folder.id}')" title="编辑">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="folder-card-action" onclick="openFolder('${folder.id}')" title="打开">
-                                <i class="fas fa-external-link-alt"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            subfoldersContainer.innerHTML = html;
-        }
-
-        // 渲染文件夹树
-        function renderFolderTree(parentId = 'root', level = 0) {
-            const children = folders.filter(folder => folder.parentId === parentId);
-            
-            if (children.length === 0) return '';
-            
-            let html = '<ul style="padding-left: ' + (level * 16) + 'px">';
-            
-            children.forEach(folder => {
-                const isExpanded = folder.expanded || false;
-                const isActive = folder.id === currentFolderId;
-                const hasChildren = folders.some(f => f.parentId === folder.id);
+        function renderFolderTreeUI() {
+            const getTreeHtml = (parentId) => {
+                const children = folders.filter(f => f.parentId === parentId).sort((a,b) => a.name.localeCompare(b.name));
+                if (children.length === 0) return '';
                 
-                html += `
-                    <li>
-                        <div class="folder-item ${isActive ? 'active' : ''}" 
-                             data-id="${folder.id}" 
+                let html = '<ul>';
+                children.forEach(folder => {
+                    const isActive = folder.id === currentFolderId;
+                    const hasChildren = folders.some(f => f.parentId === folder.id);
+                    const icon = hasChildren ? (folder.expanded ? 'fa-folder-open' : 'fa-folder') : 'fa-folder';
+                    
+                    html += `
+                        <li class="folder-item ${isActive ? 'active' : ''}" 
+                             data-id="${folder.id}"
                              draggable="true"
-                             ondragstart="onFolderDragStart(event, '${folder.id}')"
-                             ondragover="onFolderDragOver(event, '${folder.id}')"
-                             ondragleave="onFolderDragLeave(event, '${folder.id}')"
-                             ondrop="onFolderDrop(event, '${folder.id}')"
-                             onclick="selectFolder('${folder.id}')">
-                            <span class="folder-icon" onclick="toggleFolder(event, '${folder.id}')">
-                                <i class="fas ${hasChildren ? (isExpanded ? 'fa-folder-open' : 'fa-folder') : 'fa-folder'}"></i>
+                             onclick="selectFolder('${folder.id}')"
+                             ondragstart="onDragStart(event, 'folder', '${folder.id}')"
+                             ondragover="onDragOver(event, 'folder', '${folder.id}')"
+                             ondragleave="onDragLeave(event, 'folder', '${folder.id}')"
+                             ondrop="onDrop(event, 'folder', '${folder.id}')">
+                            <span class="folder-icon" onclick="event.stopPropagation(); toggleFolderExpand('${folder.id}')">
+                                <i class="fas ${icon}"></i>
                             </span>
                             <span class="folder-name">${folder.name}</span>
                             <div class="folder-actions">
-                                <button class="folder-action" onclick="deleteFolder(event, '${folder.id}')" title="删除文件夹">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                <button class="folder-action" onclick="event.stopPropagation(); openEditFolderForm('${folder.id}')" title="重命名"><i class="fas fa-edit"></i></button>
+                                <button class="folder-action" onclick="event.stopPropagation(); deleteFolder('${folder.id}')" title="删除"><i class="fas fa-trash"></i></button>
                             </div>
-                        </div>
-                        ${hasChildren ? `<div class="folder-children" ${isExpanded ? '' : 'style="display:none"'}>
-                            ${renderFolderTree(folder.id, level + 1)}
-                        </div>` : ''}
-                    </li>
-                `;
-            });
+                        </li>
+                    `;
+                     if (folder.expanded && hasChildren) {
+                        html += `<li>${getTreeHtml(folder.id)}</li>`;
+                    }
+                });
+                html += '</ul>';
+                return html;
+            };
+            folderTree.innerHTML = getTreeHtml('root');
+        }
+        
+        function renderMainContent() {
+            const isTrashView = currentFolderId === 'trash';
             
-            html += '</ul>';
-            return html;
+            // 更新工具栏按钮状态
+            addBookmarkBtn.classList.toggle('hidden', isTrashView);
+            addFolderBtn.classList.toggle('hidden', isTrashView);
+            openAllBtn.classList.toggle('hidden', isTrashView);
+
+            // 更新头部
+            const folder = folders.find(f => f.id === currentFolderId);
+            currentFolderName.textContent = isTrashView ? "回收站" : (folder ? folder.name : "所有书签");
+            currentFolderIcon.className = `fas ${isTrashView ? 'fa-trash' : 'fa-folder-open'}`;
+
+            // 渲染路径、子文件夹和书签列表
+            renderFolderPath();
+            if (isTrashView) {
+                subfoldersContainer.innerHTML = '';
+                renderTrashList();
+            } else {
+                renderSubfolders();
+                renderBookmarks();
+            }
+        }
+        
+        function renderFolderPath() {
+            if (currentFolderId === 'trash') {
+                folderPath.innerHTML = '<div class="path-segment">回收站</div>';
+                return;
+            }
+            const pathItems = getFolderPath(currentFolderId);
+            folderPath.innerHTML = pathItems.map((item, index) => 
+                `<div class="path-segment" onclick="selectFolder('${item.id}')">${item.name}</div>`
+            ).join('<div class="path-divider">/</div>');
         }
 
-        // 渲染书签列表
+        function renderSubfolders() {
+            const subfolders = folders.filter(f => f.parentId === currentFolderId).sort((a,b) => a.name.localeCompare(b.name));
+            subfoldersContainer.innerHTML = subfolders.map(folder => `
+                <div class="folder-card" data-id="${folder.id}" draggable="true"
+                     onclick="openFolder('${folder.id}')"
+                     ondragstart="onDragStart(event, 'folder', '${folder.id}')"
+                     ondragover="onDragOver(event, 'folder', '${folder.id}')"
+                     ondragleave="onDragLeave(event, 'folder', '${folder.id}')"
+                     ondrop="onDrop(event, 'folder', '${folder.id}')">
+                    <div class="folder-card-content">
+                        <div class="folder-card-icon"><i class="fas fa-folder"></i></div>
+                        <div class="folder-card-name">${folder.name}</div>
+                    </div>
+                    <div class="folder-card-actions" onclick="event.stopPropagation()">
+                        <button class="folder-card-action" onclick="openEditFolderForm('${folder.id}')" title="重命名"><i class="fas fa-edit"></i></button>
+                        <button class="folder-card-action" onclick="deleteFolder('${folder.id}')" title="删除"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         function renderBookmarks() {
-            // 获取当前文件夹中的书签
-            const currentBookmarks = bookmarks.filter(bm => bm.folderId === currentFolderId);
+            const currentBookmarks = bookmarks.filter(bm => bm.folderId === currentFolderId).sort((a,b) => a.title.localeCompare(b.title));
             
-            // 获取当前文件夹名称
-            const currentFolder = currentFolderId === 'root' 
-                ? { name: '所有书签' } 
-                : folders.find(f => f.id === currentFolderId) || { name: '未知文件夹' };
-            
-            currentFolderName.textContent = currentFolder.name;
-            
+            // 更新表头
+            bookmarkTableHeader.innerHTML = `
+                 <tr>
+                    <th style="width: 30%;">网站名称</th>
+                    <th style="width: 50%;">网址</th>
+                    <th style="width: 20%; text-align: right;">操作</th>
+                </tr>`;
+
             if (currentBookmarks.length === 0) {
-                bookmarkList.innerHTML = `
-                    <tr>
-                        <td colspan="3">
-                            <div class="empty-state">
-                                <i class="fas fa-bookmark"></i>
-                                <h3>此文件夹为空</h3>
-                                <p>点击"添加书签"按钮添加新书签</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                bookmarkList.innerHTML = `<tr><td colspan="3"><div class="empty-state"><i class="fas fa-bookmark"></i><h3>此文件夹为空</h3><p>点击上方按钮添加新书签。</p></div></td></tr>`;
                 return;
             }
-            
-            let html = '';
-            
-            currentBookmarks.forEach(bookmark => {
-                html += `
-                    <tr class="bookmark-row" draggable="true" data-id="${bookmark.id}"
-                        ondragstart="onBookmarkDragStart(event, '${bookmark.id}')"
-                        ondragover="onBookmarkDragOver(event, '${bookmark.id}')"
-                        ondragleave="onBookmarkDragLeave(event, '${bookmark.id}')"
-                        ondrop="onBookmarkDrop(event, '${bookmark.id}')">
-                        <td class="bookmark-title" onclick="openBookmark('${bookmark.url}')">${bookmark.title}</td>
-                        <td class="bookmark-url">${bookmark.url}</td>
-                        <td>
-                            <div class="bookmark-actions">
-                                <button class="action-btn" onclick="deleteBookmark('${bookmark.id}')" 
-                                    title="删除">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                                <button class="action-btn" onclick="editBookmark('${bookmark.id}')" 
-                                    title="编辑">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="action-btn" onclick="openBookmark('${bookmark.url}')" 
-                                    title="打开书签">
-                                    <i class="fas fa-external-link-alt"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            bookmarkList.innerHTML = html;
+            bookmarkList.innerHTML = currentBookmarks.map(bm => `
+                <tr class="bookmark-row" data-id="${bm.id}" draggable="true"
+                    ondragstart="onDragStart(event, 'bookmark', '${bm.id}')"
+                    ondragover="onDragOver(event, 'bookmark', '${bm.id}')"
+                    ondragleave="onDragLeave(event, 'bookmark', '${bm.id}')"
+                    ondrop="onDrop(event, 'bookmark', '${bm.id}')">
+                    <td class="bookmark-title" onclick="openBookmark('${bm.url}')">${bm.title}</td>
+                    <td class="bookmark-url">${bm.url}</td>
+                    <td>
+                        <div class="bookmark-actions">
+                             <button class="action-btn" onclick="openEditBookmarkForm('${bm.id}')" title="编辑"><i class="fas fa-edit"></i></button>
+                             <button class="action-btn" onclick="moveToTrash('${bm.id}')" title="删除"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
         }
 
-        // 刷新文件夹选择器
-        function refreshFolderSelectors() {
-            // 清空当前选项
-            bmFolderSelect.innerHTML = '<option value="root">所有书签</option>';
-            editBmFolderSelect.innerHTML = '<option value="root">所有书签</option>';
-            parentFolderSelect.innerHTML = '<option value="root">所有书签</option>';
-            
-            // 递归添加文件夹选项
-            function addFolderOptions(folderId, level = 0) {
-                const children = folders.filter(f => f.parentId === folderId);
-                
-                children.forEach(folder => {
-                    const indent = '&nbsp;&nbsp;'.repeat(level);
-                    const option = document.createElement('option');
-                    option.value = folder.id;
-                    option.innerHTML = indent + folder.name;
-                    
-                    bmFolderSelect.appendChild(option.cloneNode(true));
-                    editBmFolderSelect.appendChild(option.cloneNode(true));
-                    parentFolderSelect.appendChild(option);
-                    
-                    addFolderOptions(folder.id, level + 1);
-                });
-            }
-            
-            addFolderOptions('root');
-        }
+        function renderTrashList() {
+             // 更新表头
+            bookmarkTableHeader.innerHTML = `
+                <tr>
+                    <th style="width: 30%;">网站名称</th>
+                    <th style="width: 50%;">原始路径</th>
+                    <th style="width: 20%; text-align: right;">操作</th>
+                </tr>`;
 
-        // 切换文件夹展开状态
-        function toggleFolder(event, folderId) {
-            event.stopPropagation();
-            
-            const folderIndex = folders.findIndex(f => f.id === folderId);
-            if (folderIndex !== -1) {
-                folders[folderIndex].expanded = !folders[folderIndex].expanded;
-                renderApp();
-            }
-        }
-
-        // 选择文件夹
-        function selectFolder(folderId) {
-            currentFolderId = folderId;
-            hideAllForms();
-            renderApp();
-        }
-
-        // 打开文件夹
-        function openFolder(folderId) {
-            selectFolder(folderId);
-        }
-
-        // 添加书签
-        function addBookmark() {
-            const title = document.getElementById('bm-title').value.trim();
-            const url = document.getElementById('bm-url').value.trim();
-            const folderId = document.getElementById('bm-folder').value;
-            
-            if (!title || !url) {
-                showToast('标题和网址不能为空！', 'error');
+            if (trash.length === 0) {
+                bookmarkList.innerHTML = `<tr><td colspan="3"><div class="empty-state"><i class="fas fa-trash-alt"></i><h3>回收站是空的</h3></div></td></tr>`;
                 return;
             }
-            
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                showToast('网址必须以 http:// 或 https:// 开头', 'error');
-                return;
-            }
-            
-            bookmarks.push({
-                id: generateId(),
-                title: title,
-                url: url,
-                folderId: folderId
-            });
-            
-            hideAllForms();
-            document.getElementById('bm-title').value = '';
-            document.getElementById('bm-url').value = '';
-            
-            saveAndRender();
-            showToast('书签添加成功！', 'success');
+
+            bookmarkList.innerHTML = trash.map(item => {
+                const pathText = getFolderPath(item.folderId).map(p => p.name).join(' / ');
+                return `
+                <tr class="bookmark-row" data-id="${item.id}">
+                    <td class="bookmark-title">${item.title}</td>
+                    <td class="trash-item-path" title="${pathText}">${pathText}</td>
+                    <td>
+                        <div class="bookmark-actions">
+                            <button class="action-btn" onclick="restoreFromTrash('${item.id}')" title="恢复"><i class="fas fa-undo"></i></button>
+                            <button class="action-btn" onclick="deletePermanently('${item.id}')" title="永久删除"><i class="fas fa-times-circle"></i></button>
+                        </div>
+                    </td>
+                </tr>`
+            }).join('');
         }
 
-        // 添加文件夹
-        function addFolder() {
-            const name = document.getElementById('folder-name').value.trim();
-            const parentId = document.getElementById('parent-folder').value;
-            
-            if (!name) {
-                showToast('文件夹名称不能为空！', 'error');
-                return;
-            }
-            
-            folders.push({
-                id: generateId(),
-                name: name,
-                parentId: parentId,
-                expanded: parentId === 'root' // 根目录下的文件夹默认展开
-            });
-            
-            hideAllForms();
-            document.getElementById('folder-name').value = '';
-            
-            saveAndRender();
-            showToast('文件夹创建成功！', 'success');
+        function refreshFolderSelectors(selectedId = 'root') {
+            const optionsHtml = (parentId, level) => {
+                const prefix = '\u00A0\u00A0'.repeat(level);
+                return folders
+                    .filter(f => f.parentId === parentId)
+                    .sort((a,b) => a.name.localeCompare(b.name))
+                    .map(f => `<option value="${f.id}">${prefix}${f.name}</option>${optionsHtml(f.id, level + 1)}`)
+                    .join('');
+            };
+            const allOptions = `<option value="root">所有书签 (根目录)</option>${optionsHtml('root', 0)}`;
+            bmFolderSelect.innerHTML = allOptions;
+            parentFolderSelect.innerHTML = allOptions;
+            bmFolderSelect.value = selectedId;
+            parentFolderSelect.value = selectedId;
         }
 
-        // 编辑文件夹
-        function editFolder(folderId) {
-            const folder = folders.find(f => f.id === folderId);
-            if (!folder) return;
-            
-            // 填充表单
-            document.getElementById('folder-name').value = folder.name;
-            
-            // 设置父文件夹
-            const parentSelect = document.getElementById('parent-folder');
-            for (let i = 0; i < parentSelect.options.length; i++) {
-                if (parentSelect.options[i].value === folder.parentId) {
-                    parentSelect.selectedIndex = i;
-                    break;
-                }
-            }
-            
-            // 临时存储当前编辑的文件夹ID
-            editingFolderId = folderId;
-            
-            // 显示文件夹编辑表单
-            addFolderFormContainer.classList.add('active');
-        }
-
-        // 删除文件夹
-        async function deleteFolder(event, folderId) {
-            event.stopPropagation();
-            
-            // 检查是否有子文件夹
-            const hasChildren = folders.some(f => f.parentId === folderId);
-            if (hasChildren) {
-                showToast('无法删除包含子文件夹的文件夹！', 'error');
-                return;
-            }
-            
-            // 检查文件夹中是否有书签
-            const hasBookmarks = bookmarks.some(b => b.folderId === folderId);
-            if (hasBookmarks) {
-                showToast('无法删除包含书签的文件夹！请先删除或移动书签。', 'error');
-                return;
-            }
-            
-            folders = folders.filter(f => f.id !== folderId);
-            
-            // 如果当前选中的是被删除的文件夹，则切换到根目录
-            if (currentFolderId === folderId) {
-                currentFolderId = 'root';
-            }
-            
-            await saveAndRender();
-            showToast('文件夹已删除', 'success');
-        }
-
-        // 编辑书签
-        function editBookmark(id) {
-            const bookmark = bookmarks.find(b => b.id === id);
-            if (!bookmark) return;
-            
-            editingBookmarkId = id;
-            
-            // 填充表单数据
-            document.getElementById('edit-bm-title').value = bookmark.title;
-            document.getElementById('edit-bm-url').value = bookmark.url;
-            
-            // 设置文件夹选择
-            const folderSelect = document.getElementById('edit-bm-folder');
-            for (let i = 0; i < folderSelect.options.length; i++) {
-                if (folderSelect.options[i].value === bookmark.folderId) {
-                    folderSelect.selectedIndex = i;
-                    break;
-                }
-            }
-            
-            // 显示编辑表单
-            editBookmarkFormContainer.classList.add('active');
-        }
-
-        // 更新书签
-        function updateBookmark() {
-            const title = document.getElementById('edit-bm-title').value.trim();
-            const url = document.getElementById('edit-bm-url').value.trim();
-            const folderId = document.getElementById('edit-bm-folder').value;
-            
-            if (!title || !url) {
-                showToast('标题和网址不能为空！', 'error');
-                return;
-            }
-            
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                showToast('网址必须以 http:// 或 https:// 开头', 'error');
-                return;
-            }
-            
-            const index = bookmarks.findIndex(b => b.id === editingBookmarkId);
-            if (index !== -1) {
-                bookmarks[index].title = title;
-                bookmarks[index].url = url;
-                bookmarks[index].folderId = folderId;
-            }
-            
-            hideAllForms();
-            editingBookmarkId = null;
-            
-            saveAndRender();
-            showToast('书签更新成功！', 'success');
-        }
-
-        // 打开所有书签
-        function openAllBookmarks() {
-            function getBookmarksInFolder(folderId) {
-                let allBookmarks = [];
-                
-                // 添加当前文件夹中的书签
-                allBookmarks.push(...bookmarks.filter(bm => bm.folderId === folderId));
-                
-                // 递归添加子文件夹中的书签
-                const childFolders = folders.filter(f => f.parentId === folderId);
-                childFolders.forEach(folder => {
-                    allBookmarks.push(...getBookmarksInFolder(folder.id));
-                });
-                
-                return allBookmarks;
-            }
-            
-            const bookmarksToOpen = getBookmarksInFolder(currentFolderId);
-            
-            if (bookmarksToOpen.length === 0) {
-                showToast('此文件夹中没有书签', 'warning');
-                return;
-            }
-            
-            // 在新标签页中打开所有书签
-            bookmarksToOpen.forEach(bookmark => {
-                window.open(bookmark.url, '_blank');
-            });
-            
-            showToast(`已打开 ${bookmarksToOpen.length} 个书签`, 'success');
-        }
-
-        // 保存并渲染
+        // --- 数据操作 & 业务逻辑 ---
         async function saveAndRender() {
             if (await updateGist()) {
                 renderApp();
             }
         }
-
-        // 渲染整个应用
-        function renderApp() {
-            buildFolderPathMap();
-            renderFolderPath();
-            renderSubfolders();
-            folderTree.innerHTML = renderFolderTree();
-            renderBookmarks();
-            refreshFolderSelectors();
+        
+        function buildFolderPathMap() {
+            folderPathMap = { 'root': [{ id: 'root', name: '所有书签' }] };
+            const buildPath = (folderId, path) => {
+                const folder = folders.find(f => f.id === folderId);
+                if (!folder) return;
+                const currentPath = [...path, { id: folder.id, name: folder.name }];
+                folderPathMap[folder.id] = currentPath;
+                folders.filter(f => f.parentId === folderId).forEach(child => buildPath(child.id, currentPath));
+            };
+            folders.filter(f => f.parentId === 'root').forEach(f => buildPath(f.id, [{ id: 'root', name: '所有书签' }]));
         }
 
-        // 切换加载器显示
-        function toggleLoader(loader, show) {
-            loader.classList.toggle('hidden', !show);
+        function getFolderPath(folderId) {
+            return folderPathMap[folderId] || [{ id: 'root', name: '所有书签' }];
         }
 
-        // 显示主界面
+        function selectFolder(folderId, forceRefresh = false) {
+            if (currentFolderId === folderId && !forceRefresh) return;
+            currentFolderId = folderId;
+
+            // 更新左侧激活状态
+            document.querySelectorAll('.sidebar .folder-item.active').forEach(el => el.classList.remove('active'));
+            const activeItem = document.querySelector(`.sidebar .folder-item[data-id="${folderId}"]`);
+            if (activeItem) activeItem.classList.add('active');
+            
+            renderMainContent();
+        }
+
+        function toggleFolderExpand(folderId) {
+            const folder = folders.find(f => f.id === folderId);
+            if (folder) {
+                folder.expanded = !folder.expanded;
+                renderFolderTreeUI();
+            }
+        }
+        
+        function openFolder(folderId) { selectFolder(folderId); }
+        function openBookmark(url) { if (url) window.open(url, '_blank'); }
+
+        function openAddBookmarkForm() {
+            hideAllForms();
+            document.getElementById('bookmark-form-title').innerHTML = '<i class="fas fa-plus"></i> 添加新书签';
+            document.getElementById('bm-id').value = '';
+            document.getElementById('bm-title').value = '';
+            document.getElementById('bm-url').value = '';
+            refreshFolderSelectors(currentFolderId);
+            bookmarkFormContainer.classList.add('active');
+        }
+
+        function openEditBookmarkForm(id) {
+            const bookmark = bookmarks.find(b => b.id === id);
+            if (!bookmark) return;
+            hideAllForms();
+            document.getElementById('bookmark-form-title').innerHTML = '<i class="fas fa-edit"></i> 编辑书签';
+            document.getElementById('bm-id').value = bookmark.id;
+            document.getElementById('bm-title').value = bookmark.title;
+            document.getElementById('bm-url').value = bookmark.url;
+            refreshFolderSelectors(bookmark.folderId);
+            bookmarkFormContainer.classList.add('active');
+        }
+
+        function openAddFolderForm() {
+            hideAllForms();
+            document.getElementById('folder-form-title').innerHTML = '<i class="fas fa-folder-plus"></i> 添加新文件夹';
+            document.getElementById('folder-id').value = '';
+            document.getElementById('folder-name').value = '';
+            refreshFolderSelectors(currentFolderId);
+            folderFormContainer.classList.add('active');
+        }
+
+        function openEditFolderForm(id) {
+            const folder = folders.find(f => f.id === id);
+            if (!folder) return;
+            hideAllForms();
+            document.getElementById('folder-form-title').innerHTML = '<i class="fas fa-edit"></i> 重命名文件夹';
+            document.getElementById('folder-id').value = folder.id;
+            document.getElementById('folder-name').value = folder.name;
+            refreshFolderSelectors(folder.parentId);
+            folderFormContainer.classList.add('active');
+        }
+
+        async function saveBookmark() {
+            const id = document.getElementById('bm-id').value;
+            const title = document.getElementById('bm-title').value.trim();
+            const url = document.getElementById('bm-url').value.trim();
+            const folderId = document.getElementById('bm-folder').value;
+
+            if (!title || !url) {
+                showToast('标题和网址不能为空!', 'error'); return;
+            }
+            if (!url.match(/^https?:\/\//)) {
+                showToast('网址格式不正确，必须以 http:// 或 https:// 开头。', 'error'); return;
+            }
+
+            if (id) { // 更新
+                const index = bookmarks.findIndex(b => b.id === id);
+                if (index > -1) {
+                    bookmarks[index] = { ...bookmarks[index], title, url, folderId };
+                    showToast('书签已更新', 'success');
+                }
+            } else { // 新增
+                bookmarks.push({ id: generateId(), title, url, folderId });
+                showToast('书签已添加', 'success');
+            }
+            hideAllForms();
+            await saveAndRender();
+        }
+
+        async function saveFolder() {
+            const id = document.getElementById('folder-id').value;
+            const name = document.getElementById('folder-name').value.trim();
+            const parentId = document.getElementById('parent-folder').value;
+
+            if (!name) {
+                showToast('文件夹名称不能为空!', 'error'); return;
+            }
+
+            if (id) { // 更新
+                const index = folders.findIndex(f => f.id === id);
+                if (index > -1) {
+                    folders[index].name = name;
+                    folders[index].parentId = parentId;
+                    showToast('文件夹已更新', 'success');
+                }
+            } else { // 新增
+                folders.push({ id: generateId(), name, parentId, expanded: true });
+                showToast('文件夹已创建', 'success');
+            }
+            hideAllForms();
+            await saveAndRender();
+        }
+
+        function deleteFolder(folderId) {
+            const hasChildren = folders.some(f => f.parentId === folderId);
+            const hasBookmarks = bookmarks.some(b => b.folderId === folderId);
+            if(hasChildren || hasBookmarks) {
+                showToast('请先移动或删除文件夹内的所有内容。', 'error');
+                return;
+            }
+            if (confirm(`确定要删除这个文件夹吗？`)) {
+                folders = folders.filter(f => f.id !== folderId);
+                if (currentFolderId === folderId) currentFolderId = 'root';
+                saveAndRender();
+                showToast('文件夹已删除', 'success');
+            }
+        }
+        
+        async function moveToTrash(bookmarkId) {
+            const index = bookmarks.findIndex(bm => bm.id === bookmarkId);
+            if (index > -1) {
+                const [item] = bookmarks.splice(index, 1);
+                trash.unshift(item); // 移到回收站顶部
+                await saveAndRender();
+                showToast('书签已移至回收站', 'success');
+            }
+        }
+        
+        async function restoreFromTrash(id) {
+            const index = trash.findIndex(item => item.id === id);
+            if (index > -1) {
+                const [item] = trash.splice(index, 1);
+                // 检查原文件夹是否存在
+                if (item.folderId !== 'root' && !folders.some(f => f.id === item.folderId)) {
+                    item.folderId = 'root'; // 如果不存在，则恢复到根目录
+                    showToast('书签已恢复，但原始文件夹不存在，已移至根目录。', 'warning');
+                } else {
+                    showToast('书签已恢复', 'success');
+                }
+                bookmarks.push(item);
+                await saveAndRender();
+            }
+        }
+
+        async function deletePermanently(id) {
+            if (confirm('此操作将永久删除该书签，无法恢复。确定吗？')) {
+                trash = trash.filter(item => item.id !== id);
+                await saveAndRender();
+                showToast('书签已永久删除', 'success');
+            }
+        }
+
+        // --- 拖放逻辑 ---
+        function onDragStart(event, type, id) {
+            draggedElementInfo = { type, id };
+            event.dataTransfer.setData('text/plain', id);
+            event.dataTransfer.effectAllowed = 'move';
+            // 使用一个短暂的延时来添加class，避免影响拖拽图像的生成
+            setTimeout(() => event.target.classList.add('dragging'), 0);
+        }
+        
+        function onDragOver(event, targetType, targetId) {
+            event.preventDefault();
+            if (!draggedElementInfo) return;
+
+            const targetElement = event.target.closest('.bookmark-row, .folder-item, .folder-card');
+            if (!targetElement) return;
+
+            removeDropHighlights();
+
+            if (draggedElementInfo.type === 'bookmark' && targetType === 'bookmark' && draggedElementInfo.id !== targetId) {
+                // 在书签之间拖动
+                const rect = targetElement.getBoundingClientRect();
+                const isAfter = event.clientY > rect.top + rect.height / 2;
+
+                if (!dropIndicator) {
+                    dropIndicator = document.createElement('tr');
+                    dropIndicator.className = 'drop-indicator';
+                    dropIndicator.innerHTML = `<td colspan="3"></td>`;
+                }
+                
+                if (isAfter) {
+                    targetElement.after(dropIndicator);
+                } else {
+                    targetElement.before(dropIndicator);
+                }
+            } else if (targetType === 'folder' && targetId !== draggedElementInfo.id) {
+                // 拖到文件夹上
+                targetElement.classList.add('drop-inside');
+            }
+        }
+
+        function onDragLeave(event, type, id) {
+            const relatedTarget = event.relatedTarget;
+            // 如果相关元素仍然在当前拖拽目标内，则不移除高亮
+            if(relatedTarget && event.currentTarget.contains(relatedTarget)) {
+                return;
+            }
+            removeDropHighlights();
+        }
+
+        async function onDrop(event, targetType, targetId) {
+            event.preventDefault();
+            if (!draggedElementInfo || (draggedElementInfo.id === targetId)) {
+                removeDropHighlights();
+                return;
+            }
+            
+            let moved = false;
+            if (targetType === 'folder') {
+                // 移动到文件夹
+                if (draggedElementInfo.type === 'bookmark') {
+                    const bm = bookmarks.find(b => b.id === draggedElementInfo.id);
+                    if (bm) { bm.folderId = targetId; moved = true; }
+                } else if (draggedElementInfo.type === 'folder') {
+                    const folder = folders.find(f => f.id === draggedElementInfo.id);
+                    // 防止将文件夹拖到其自身或其子文件夹中
+                    const path = getFolderPath(targetId).map(p => p.id);
+                    if (folder && !path.includes(folder.id)) {
+                        folder.parentId = targetId; moved = true;
+                    }
+                }
+            } else if (targetType === 'bookmark' && draggedElementInfo.type === 'bookmark') {
+                // 重新排序书签
+                const draggedBm = bookmarks.find(b => b.id === draggedElementInfo.id);
+                if(draggedBm && dropIndicator) {
+                    const targetRow = document.querySelector(`.bookmark-row[data-id="${targetId}"]`);
+                    const dropTargetIndex = Array.from(bookmarkList.children).indexOf(dropIndicator);
+                    
+                    const draggedIndex = bookmarks.findIndex(b => b.id === draggedElementInfo.id);
+                    bookmarks.splice(draggedIndex, 1);
+                    
+                    const newIndex = (dropTargetIndex > draggedIndex) ? dropTargetIndex -1 : dropTargetIndex;
+                    bookmarks.splice(newIndex, 0, draggedBm);
+                    moved = true;
+                }
+            }
+            
+            if (moved) await saveAndRender();
+            removeDropHighlights();
+            draggedElementInfo = null;
+        }
+
+        function removeDropHighlights() {
+            document.querySelectorAll('.drop-inside').forEach(el => el.classList.remove('drop-inside'));
+            if (dropIndicator) {
+                dropIndicator.remove();
+                dropIndicator = null;
+            }
+        }
+        
+        document.addEventListener('dragend', (event) => {
+            document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+            removeDropHighlights();
+            draggedElementInfo = null;
+        });
+
+        // --- 认证 & 初始化 ---
+        async function handleLogin() {
+            const password = passwordInput.value;
+            if (!password) { authError.textContent = '密码不能为空。'; return; }
+            encryptionKey = password;
+            const content = await fetchGist();
+            if (content === null) return;
+
+            if (content === '{}') {
+                if (confirm('未找到数据。是否使用当前密码创建新的加密书签库?')) {
+                    folders = []; bookmarks = []; trash = [];
+                    await updateGist();
+                    showAppView();
+                }
+            } else {
+                const decrypted = decrypt(content, encryptionKey);
+                if (!decrypted) {
+                    authError.textContent = '密码错误或数据已损坏。';
+                    encryptionKey = null; return;
+                }
+                const data = JSON.parse(decrypted);
+                folders = data.folders || [];
+                bookmarks = data.bookmarks || [];
+                trash = data.trash || []; // 加载回收站数据
+                showAppView();
+                showToast('解锁成功', 'success');
+            }
+        }
+
+        function handleLogout() {
+            encryptionKey = null; folders = []; bookmarks = []; trash = [];
+            showAuthView();
+            showToast('已锁定', 'info');
+        }
+
         function showAppView() {
             authContainer.classList.add('hidden');
             appContainer.classList.remove('hidden');
             renderApp();
         }
 
-        // 显示认证界面
         function showAuthView() {
             appContainer.classList.add('hidden');
             authContainer.classList.remove('hidden');
             passwordInput.value = '';
             authError.textContent = '';
         }
-
-        // 隐藏所有表单
+        
         function hideAllForms() {
-            addBookmarkFormContainer.classList.remove('active');
-            editBookmarkFormContainer.classList.remove('active');
-            addFolderFormContainer.classList.remove('active');
+            bookmarkFormContainer.classList.remove('active');
+            folderFormContainer.classList.remove('active');
+        }
+        
+        function toggleLoader(loader, show) { loader.classList.toggle('hidden', !show); }
+        
+        function showToast(message, type = 'info', duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icons = { 'error': 'fa-exclamation-circle', 'success': 'fa-check-circle', 'warning': 'fa-exclamation-triangle', 'info': 'fa-info-circle' };
+            toast.innerHTML = `<i class="fas ${icons[type]} toast-icon"></i><div class="toast-message">${message}</div>`;
+            toastContainer.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.style.animation = 'fadeOut 0.3s forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
         }
 
-        // 登录处理
-        async function handleLogin() {
-            const password = passwordInput.value;
-            if (!password) {
-                authError.textContent = '密码不能为空。';
-                return;
-            }
-            encryptionKey = password;
-
-            const content = await fetchGist();
-            if (content === null) return;
-
-            if (content === '{}') { // 首次使用
-                if (confirm('未找到数据，是否使用当前密码创建新的加密书签库？')) {
-                    // 创建根目录
-                    folders = [];
-                    bookmarks = [];
-                    await updateGist();
-                    showAppView();
-                }
-            } else {
-                try {
-                    const decrypted = decrypt(content, encryptionKey);
-                    if (!decrypted) throw new Error('解密失败');
-                    
-                    const data = JSON.parse(decrypted);
-                    folders = data.folders || [];
-                    bookmarks = data.bookmarks || [];
-                    
-                    // 确保根目录展开
-                    if (folders.length > 0) {
-                        folders.forEach(folder => {
-                            if (folder.parentId === 'root') {
-                                folder.expanded = true;
-                            }
-                        });
-                    }
-                    
-                    showAppView();
-                    showToast('成功解锁书签管理器', 'success');
-                } catch (e) {
-                    console.error('解密失败:', e);
-                    authError.textContent = '密码错误或数据已损坏。';
-                    encryptionKey = null;
-                }
-            }
-        }
-
-        // 登出处理
-        function handleLogout() {
-            encryptionKey = null;
-            folders = [];
-            bookmarks = [];
-            showAuthView();
-            showToast('书签管理器已锁定', 'info');
-        }
-
-        // 打开书签
-        function openBookmark(url) {
-            window.open(url, '_blank');
-        }
-
-        // 删除书签
-        async function deleteBookmark(id) {
-            bookmarks = bookmarks.filter(bm => bm.id !== id);
-            await saveAndRender();
-            showToast('书签已删除', 'success');
-        }
-
-        // 拖放功能实现
-        function onBookmarkDragStart(event, bookmarkId) {
-            draggedElement = {
-                type: 'bookmark',
-                id: bookmarkId
-            };
-            event.dataTransfer.setData('text/plain', bookmarkId);
-            event.target.classList.add('dragging');
-            event.stopPropagation();
-        }
-
-        function onBookmarkDragOver(event, bookmarkId) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            const rect = event.target.getBoundingClientRect();
-            const relativeY = event.clientY - rect.top;
-            const height = rect.height;
-            
-            // 移除所有高亮
-            document.querySelectorAll('.bookmark-row').forEach(row => {
-                row.classList.remove('drop-target', 'drop-above', 'drop-below');
-            });
-            
-            // 确定放置位置
-            if (relativeY < height * 0.3) {
-                event.target.classList.add('drop-above');
-                dropPosition = 'before';
-            } else if (relativeY > height * 0.7) {
-                event.target.classList.add('drop-below');
-                dropPosition = 'after';
-            } else {
-                event.target.classList.add('drop-target');
-                dropPosition = 'on';
-            }
-            
-            dropTarget = bookmarkId;
-        }
-
-        function onBookmarkDragLeave(event, bookmarkId) {
-            event.target.classList.remove('drop-target', 'drop-above', 'drop-below');
-            dropTarget = null;
-        }
-
-        async function onBookmarkDrop(event, targetBookmarkId) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            if (!draggedElement || draggedElement.type !== 'bookmark') return;
-            
-            // 移除所有高亮
-            document.querySelectorAll('.bookmark-row').forEach(row => {
-                row.classList.remove('drop-target', 'drop-above', 'drop-below', 'dragging');
-            });
-            
-            const draggedBookmark = bookmarks.find(b => b.id === draggedElement.id);
-            if (!draggedBookmark) return;
-            
-            if (dropPosition === 'before' || dropPosition === 'after') {
-                // 移动到新位置
-                const targetIndex = bookmarks.findIndex(b => b.id === targetBookmarkId);
-                const draggedIndex = bookmarks.findIndex(b => b.id === draggedElement.id);
-                
-                if (targetIndex !== -1 && draggedIndex !== -1) {
-                    // 从原位置移除
-                    bookmarks.splice(draggedIndex, 1);
-                    
-                    // 计算新位置
-                    let newIndex = targetIndex;
-                    if (dropPosition === 'after') {
-                        newIndex = targetIndex + 1;
-                        if (draggedIndex < targetIndex) newIndex--;
-                    } else if (draggedIndex < targetIndex) {
-                        newIndex--;
-                    }
-                    
-                    // 插入到新位置
-                    bookmarks.splice(newIndex, 0, draggedBookmark);
-                    
-                    await saveAndRender();
-                    showToast('书签位置已更新', 'success');
-                }
-            }
-            
-            draggedElement = null;
-            dropTarget = null;
-        }
-
-        function onFolderDragStart(event, folderId) {
-            draggedElement = {
-                type: 'folder',
-                id: folderId
-            };
-            event.dataTransfer.setData('text/plain', folderId);
-            event.target.classList.add('dragging');
-            event.stopPropagation();
-        }
-
-        function onFolderDragOver(event, folderId) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            // 移除所有高亮
-            document.querySelectorAll('.folder-item, .folder-card').forEach(el => {
-                el.classList.remove('drop-target', 'drop-inside');
-            });
-            
-            // 高亮当前文件夹
-            event.target.classList.add('drop-inside');
-            dropPosition = 'inside';
-            dropTarget = folderId;
-        }
-
-        function onFolderDragLeave(event, folderId) {
-            event.target.classList.remove('drop-target', 'drop-inside');
-            dropTarget = null;
-        }
-
-        async function onFolderDrop(event, targetFolderId) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            if (!draggedElement) return;
-            
-            // 移除所有高亮
-            document.querySelectorAll('.folder-item, .folder-card').forEach(el => {
-                el.classList.remove('drop-target', 'drop-inside', 'dragging');
-            });
-            
-            if (draggedElement.type === 'bookmark') {
-                // 书签移动到文件夹
-                const draggedBookmark = bookmarks.find(b => b.id === draggedElement.id);
-                if (draggedBookmark) {
-                    draggedBookmark.folderId = targetFolderId;
-                    await saveAndRender();
-                    const folder = folders.find(f => f.id === targetFolderId);
-                    showToast(`书签已移动到文件夹 ${folder ? folder.name : ''}`, 'success');
-                }
-            } else if (draggedElement.type === 'folder') {
-                // 文件夹移动到文件夹
-                const draggedFolder = folders.find(f => f.id === draggedElement.id);
-                if (draggedFolder && targetFolderId !== draggedFolder.id) {
-                    // 防止移动到自身或子文件夹
-                    draggedFolder.parentId = targetFolderId;
-                    await saveAndRender();
-                    const targetFolder = folders.find(f => f.id === targetFolderId);
-                    showToast(`文件夹已移动到 ${targetFolder ? targetFolder.name : ''}`, 'success');
-                }
-            }
-            
-            draggedElement = null;
-            dropTarget = null;
-        }
-
-        // 事件监听器
+        // --- 事件监听器 ---
         loginBtn.addEventListener('click', handleLogin);
+        passwordInput.addEventListener('keyup', (e) => e.key === 'Enter' && handleLogin());
         logoutBtn.addEventListener('click', handleLogout);
         
-        addBookmarkBtn.addEventListener('click', () => {
-            // 设置当前文件夹为默认选择
-            const folderSelect = document.getElementById('bm-folder');
-            for (let i = 0; i < folderSelect.options.length; i++) {
-                if (folderSelect.options[i].value === currentFolderId) {
-                    folderSelect.selectedIndex = i;
-                    break;
-                }
-            }
-            
-            document.getElementById('bm-title').value = '';
-            document.getElementById('bm-url').value = '';
-            addBookmarkFormContainer.classList.add('active');
+        addBookmarkBtn.addEventListener('click', openAddBookmarkForm);
+        addFolderBtn.addEventListener('click', openAddFolderForm);
+        
+        document.getElementById('save-bookmark-form').addEventListener('click', saveBookmark);
+        document.getElementById('cancel-bookmark-form').addEventListener('click', hideAllForms);
+        
+        document.getElementById('save-folder-form').addEventListener('click', saveFolder);
+        document.getElementById('cancel-folder-form').addEventListener('click', hideAllForms);
+
+        openAllBtn.addEventListener('click', () => {
+             const bookmarksToOpen = bookmarks.filter(bm => bm.folderId === currentFolderId);
+             if(bookmarksToOpen.length === 0) {
+                 showToast('当前文件夹没有书签可以打开。', 'warning');
+                 return;
+             }
+             if(bookmarksToOpen.length > 5 && !confirm(`即将打开 ${bookmarksToOpen.length} 个标签页，确定吗？`)) {
+                 return;
+             }
+             bookmarksToOpen.forEach(bm => window.open(bm.url, '_blank'));
         });
 
-        addFolderBtn.addEventListener('click', () => {
-            // 设置当前文件夹为默认父文件夹
-            const parentSelect = document.getElementById('parent-folder');
-            for (let i = 0; i < parentSelect.options.length; i++) {
-                if (parentSelect.options[i].value === currentFolderId) {
-                    parentSelect.selectedIndex = i;
-                    break;
-                }
-            }
-            
-            document.getElementById('folder-name').value = '';
-            addFolderFormContainer.classList.add('active');
-        });
-
-        saveBookmarkBtn.addEventListener('click', addBookmark);
-        updateBookmarkBtn.addEventListener('click', updateBookmark);
-        saveFolderBtn.addEventListener('click', addFolder);
-        
-        cancelAddBtn.addEventListener('click', () => {
-            addBookmarkFormContainer.classList.remove('active');
-        });
-        
-        cancelEditBtn.addEventListener('click', () => {
-            editBookmarkFormContainer.classList.remove('active');
-            editingBookmarkId = null;
-        });
-        
-        cancelFolderBtn.addEventListener('click', () => {
-            addFolderFormContainer.classList.remove('active');
-        });
-        
-        openAllBtn.addEventListener('click', openAllBookmarks);
-
-        // 全局函数
-        window.toggleFolder = toggleFolder;
+        // 全局函数，用于HTML内联事件
         window.selectFolder = selectFolder;
-        window.deleteFolder = deleteFolder;
-        window.openBookmark = openBookmark;
-        window.editBookmark = editBookmark;
-        window.deleteBookmark = deleteBookmark;
         window.openFolder = openFolder;
-        window.editFolder = editFolder;
+        window.toggleFolderExpand = toggleFolderExpand;
+        window.deleteFolder = deleteFolder;
+        window.openEditFolderForm = openEditFolderForm;
+        window.openBookmark = openBookmark;
+        window.openEditBookmarkForm = openEditBookmarkForm;
+        window.moveToTrash = moveToTrash;
+        window.restoreFromTrash = restoreFromTrash;
+        window.deletePermanently = deletePermanently;
+        window.onDragStart = onDragStart;
+        window.onDragOver = onDragOver;
+        window.onDragLeave = onDragLeave;
+        window.onDrop = onDrop;
+
 
         // 初始显示认证界面
         showAuthView();
