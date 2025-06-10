@@ -620,6 +620,40 @@
                 transform: translateY(20px);
             }
         }
+
+        /* 拖放相关样式 */
+        .draggable {
+            cursor: grab;
+        }
+
+        .dragging {
+            opacity: 0.5;
+            border: 2px dashed var(--primary-color);
+        }
+
+        .drop-target {
+            background-color: rgba(0, 123, 255, 0.2);
+        }
+
+        .drop-between {
+            height: 4px;
+            background-color: var(--primary-color);
+            margin: 2px 0;
+        }
+
+        .drop-inside {
+            box-shadow: 0 0 0 2px var(--primary-color) inset;
+        }
+
+        .folder-card.drop-target {
+            background-color: rgba(0, 123, 255, 0.2);
+        }
+
+        .drop-indicator {
+            height: 4px;
+            background-color: var(--primary-color);
+            margin: 2px 0;
+        }
     </style>
 </head>
 <body>
@@ -826,6 +860,9 @@
         let currentFolderId = 'root';
         let editingBookmarkId = null;
         let folderPathMap = {};
+        let draggedElement = null;
+        let dropTarget = null;
+        let dropPosition = null; // 'before', 'after', 'inside'
 
         // 生成唯一ID
         function generateId() {
@@ -993,7 +1030,11 @@
             let html = '';
             subfolders.forEach(folder => {
                 html += `
-                    <div class="folder-card" onclick="selectFolder('${folder.id}')">
+                    <div class="folder-card" data-id="${folder.id}" draggable="true"
+                         ondragstart="onFolderDragStart(event, '${folder.id}')"
+                         ondragover="onFolderDragOver(event, '${folder.id}')"
+                         ondragleave="onFolderDragLeave(event, '${folder.id}')"
+                         ondrop="onFolderDrop(event, '${folder.id}')">
                         <div class="folder-card-icon">
                             <i class="fas fa-folder"></i>
                         </div>
@@ -1033,6 +1074,11 @@
                     <li>
                         <div class="folder-item ${isActive ? 'active' : ''}" 
                              data-id="${folder.id}" 
+                             draggable="true"
+                             ondragstart="onFolderDragStart(event, '${folder.id}')"
+                             ondragover="onFolderDragOver(event, '${folder.id}')"
+                             ondragleave="onFolderDragLeave(event, '${folder.id}')"
+                             ondrop="onFolderDrop(event, '${folder.id}')"
                              onclick="selectFolder('${folder.id}')">
                             <span class="folder-icon" onclick="toggleFolder(event, '${folder.id}')">
                                 <i class="fas ${hasChildren ? (isExpanded ? 'fa-folder-open' : 'fa-folder') : 'fa-folder'}"></i>
@@ -1086,7 +1132,11 @@
             
             currentBookmarks.forEach(bookmark => {
                 html += `
-                    <tr class="bookmark-row">
+                    <tr class="bookmark-row" draggable="true" data-id="${bookmark.id}"
+                        ondragstart="onBookmarkDragStart(event, '${bookmark.id}')"
+                        ondragover="onBookmarkDragOver(event, '${bookmark.id}')"
+                        ondragleave="onBookmarkDragLeave(event, '${bookmark.id}')"
+                        ondrop="onBookmarkDrop(event, '${bookmark.id}')">
                         <td class="bookmark-title" onclick="openBookmark('${bookmark.url}')">${bookmark.title}</td>
                         <td class="bookmark-url">${bookmark.url}</td>
                         <td>
@@ -1468,6 +1518,160 @@
             bookmarks = bookmarks.filter(bm => bm.id !== id);
             await saveAndRender();
             showToast('书签已删除', 'success');
+        }
+
+        // 拖放功能实现
+        function onBookmarkDragStart(event, bookmarkId) {
+            draggedElement = {
+                type: 'bookmark',
+                id: bookmarkId
+            };
+            event.dataTransfer.setData('text/plain', bookmarkId);
+            event.target.classList.add('dragging');
+            event.stopPropagation();
+        }
+
+        function onBookmarkDragOver(event, bookmarkId) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const rect = event.target.getBoundingClientRect();
+            const relativeY = event.clientY - rect.top;
+            const height = rect.height;
+            
+            // 移除所有高亮
+            document.querySelectorAll('.bookmark-row').forEach(row => {
+                row.classList.remove('drop-target', 'drop-above', 'drop-below');
+            });
+            
+            // 确定放置位置
+            if (relativeY < height * 0.3) {
+                event.target.classList.add('drop-above');
+                dropPosition = 'before';
+            } else if (relativeY > height * 0.7) {
+                event.target.classList.add('drop-below');
+                dropPosition = 'after';
+            } else {
+                event.target.classList.add('drop-target');
+                dropPosition = 'on';
+            }
+            
+            dropTarget = bookmarkId;
+        }
+
+        function onBookmarkDragLeave(event, bookmarkId) {
+            event.target.classList.remove('drop-target', 'drop-above', 'drop-below');
+            dropTarget = null;
+        }
+
+        async function onBookmarkDrop(event, targetBookmarkId) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            if (!draggedElement || draggedElement.type !== 'bookmark') return;
+            
+            // 移除所有高亮
+            document.querySelectorAll('.bookmark-row').forEach(row => {
+                row.classList.remove('drop-target', 'drop-above', 'drop-below', 'dragging');
+            });
+            
+            const draggedBookmark = bookmarks.find(b => b.id === draggedElement.id);
+            if (!draggedBookmark) return;
+            
+            if (dropPosition === 'before' || dropPosition === 'after') {
+                // 移动到新位置
+                const targetIndex = bookmarks.findIndex(b => b.id === targetBookmarkId);
+                const draggedIndex = bookmarks.findIndex(b => b.id === draggedElement.id);
+                
+                if (targetIndex !== -1 && draggedIndex !== -1) {
+                    // 从原位置移除
+                    bookmarks.splice(draggedIndex, 1);
+                    
+                    // 计算新位置
+                    let newIndex = targetIndex;
+                    if (dropPosition === 'after') {
+                        newIndex = targetIndex + 1;
+                        if (draggedIndex < targetIndex) newIndex--;
+                    } else if (draggedIndex < targetIndex) {
+                        newIndex--;
+                    }
+                    
+                    // 插入到新位置
+                    bookmarks.splice(newIndex, 0, draggedBookmark);
+                    
+                    await saveAndRender();
+                    showToast('书签位置已更新', 'success');
+                }
+            }
+            
+            draggedElement = null;
+            dropTarget = null;
+        }
+
+        function onFolderDragStart(event, folderId) {
+            draggedElement = {
+                type: 'folder',
+                id: folderId
+            };
+            event.dataTransfer.setData('text/plain', folderId);
+            event.target.classList.add('dragging');
+            event.stopPropagation();
+        }
+
+        function onFolderDragOver(event, folderId) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // 移除所有高亮
+            document.querySelectorAll('.folder-item, .folder-card').forEach(el => {
+                el.classList.remove('drop-target', 'drop-inside');
+            });
+            
+            // 高亮当前文件夹
+            event.target.classList.add('drop-inside');
+            dropPosition = 'inside';
+            dropTarget = folderId;
+        }
+
+        function onFolderDragLeave(event, folderId) {
+            event.target.classList.remove('drop-target', 'drop-inside');
+            dropTarget = null;
+        }
+
+        async function onFolderDrop(event, targetFolderId) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            if (!draggedElement) return;
+            
+            // 移除所有高亮
+            document.querySelectorAll('.folder-item, .folder-card').forEach(el => {
+                el.classList.remove('drop-target', 'drop-inside', 'dragging');
+            });
+            
+            if (draggedElement.type === 'bookmark') {
+                // 书签移动到文件夹
+                const draggedBookmark = bookmarks.find(b => b.id === draggedElement.id);
+                if (draggedBookmark) {
+                    draggedBookmark.folderId = targetFolderId;
+                    await saveAndRender();
+                    const folder = folders.find(f => f.id === targetFolderId);
+                    showToast(`书签已移动到文件夹 ${folder ? folder.name : ''}`, 'success');
+                }
+            } else if (draggedElement.type === 'folder') {
+                // 文件夹移动到文件夹
+                const draggedFolder = folders.find(f => f.id === draggedElement.id);
+                if (draggedFolder && targetFolderId !== draggedFolder.id) {
+                    // 防止移动到自身或子文件夹
+                    draggedFolder.parentId = targetFolderId;
+                    await saveAndRender();
+                    const targetFolder = folders.find(f => f.id === targetFolderId);
+                    showToast(`文件夹已移动到 ${targetFolder ? targetFolder.name : ''}`, 'success');
+                }
+            }
+            
+            draggedElement = null;
+            dropTarget = null;
         }
 
         // 事件监听器
