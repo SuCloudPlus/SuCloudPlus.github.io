@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工具集合</title>
+    
+    <!-- 配置数据 - 在此处修改和添加链接 -->
+    <script id="links-config" type="application/json">
+    {
+        "links": [
+            {
+                "title": "书签管理工具",
+                "description": "个人加密书签管理工具",
+                "url": "https://ducloudplus.github.io/bookmark.html"
+            },
+        ]
+    }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+        
+        .container {
+            width: 100%;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-weight: 400;
+        }
+        
+        .description {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .link-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            border: 1px solid #eee;
+        }
+        
+        .link-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+            border-color: #3498db;
+        }
+        
+        .link-title {
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .link-description {
+            color: #666;
+            font-size: 0.95rem;
+            margin-bottom: 15px;
+        }
+        
+        .link-url {
+            color: #3498db;
+            font-size: 0.9rem;
+            word-break: break-all;
+            font-family: monospace;
+            border-top: 1px solid #f5f5f5;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        
+        footer {
+            text-align: center;
+            color: #95a5a6;
+            font-size: 0.9rem;
+            padding-top: 20px;
+            border-top: 1px solid #eaeaea;
+            margin-top: 20px;
+        }
+        
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .links-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .link-item {
+                padding: 20px;
+            }
+            
+            .link-title {
+                font-size: 1.2rem;
+            }
+        }
+        
+        /* 小屏幕手机优化 */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 1.6rem;
+            }
+            
+            .description {
+                font-size: 1rem;
+            }
+            
+            .link-item {
+                padding: 18px;
+            }
+        }
+        
+        /* 打印样式 */
+        @media print {
+            .link-item {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+            
+            .link-item:hover {
+                transform: none;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>工具集合</h1>
+            <p class="description">常用工具和资源的快捷链接，点击即可访问</p>
+        </header>
+        
+        <main>
+            <div id="links-container" class="links-grid">
+                <!-- 链接将通过JavaScript动态生成 -->
+            </div>
+        </main>
+        
+        <footer>
+            <p>© <span id="current-year"></span> 工具集合页 | 共 <span id="links-count">0</span> 个链接</p>
+        </footer>
+    </div>
+
+    <script>
+        // 从配置中读取链接数据
+        const configElement = document.getElementById('links-config');
+        const linksData = JSON.parse(configElement.textContent);
+        
+        // 获取容器元素
+        const linksContainer = document.getElementById('links-container');
+        const linksCountElement = document.getElementById('links-count');
+        const currentYearElement = document.getElementById('current-year');
+        
+        // 设置当前年份
+        currentYearElement.textContent = new Date().getFullYear();
+        
+        // 生成链接卡片
+        function generateLinkCards() {
+            let html = '';
+            
+            linksData.links.forEach(link => {
+                html += `
+                    <a href="${link.url}" target="_blank" class="link-item">
+                        <div class="link-title">${link.title}</div>
+                        <div class="link-description">${link.description}</div>
+                        <div class="link-url">${link.url}</div>
+                    </a>
+                `;
+            });
+            
+            linksContainer.innerHTML = html;
+            linksCountElement.textContent = linksData.links.length;
+        }
+        
+        // 页面加载时生成链接
+        document.addEventListener('DOMContentLoaded', generateLinkCards);
+        
+        // 添加键盘快捷键支持
+        document.addEventListener('keydown', (e) => {
+            // Alt+1 到 Alt+9 快速访问前9个链接
+            if (e.altKey && e.key >= '1' && e.key <= '9') {
+                const index = parseInt(e.key) - 1;
+                if (index < linksData.links.length) {
+                    window.open(linksData.links[index].url, '_blank');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
