@@ -301,7 +301,7 @@
         
         .bookmark-title {
             font-weight: 500;
-            max-width: 250px;
+            max-width: 200px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -313,9 +313,17 @@
             text-decoration: underline;
         }
         
+        .bookmark-description {
+            color: #aaa;
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
         .bookmark-url {
             color: #aaa;
-            max-width: 400px;
+            max-width: 300px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -429,7 +437,7 @@
             border-radius: 8px;
             border: 1px solid var(--border-color);
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             transform: translateY(20px);
             transition: transform 0.3s;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -452,13 +460,16 @@
         
         input[type="text"], 
         input[type="url"],
-        input[type="password"] {
+        input[type="password"],
+        textarea {
             width: 100%;
             padding: 10px;
             border: 1px solid var(--border-color);
             border-radius: 4px;
             background-color: var(--bg-color);
             color: var(--text-color);
+            font-family: inherit;
+            resize: vertical;
         }
         
         select {
@@ -699,6 +710,32 @@
             margin-left: 8px;
             vertical-align: middle;
         }
+        
+        /* 描述字段提示文本 */
+        .form-hint {
+            color: #888;
+            font-size: 12px;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        
+        /* 自适应表格列宽 */
+        @media (max-width: 1200px) {
+            .bookmark-description,
+            .bookmark-url {
+                max-width: 200px;
+            }
+        }
+        
+        @media (max-width: 1000px) {
+            .bookmark-title {
+                max-width: 150px;
+            }
+            .bookmark-description,
+            .bookmark-url {
+                max-width: 150px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -769,9 +806,10 @@
                             <tr>
                                 <th style="width: 5%;"></th> <!-- 拖动手柄列 -->
                                 <th style="width: 10%;">序号</th>
-                                <th style="width: 25%;">网站名称</th>
-                                <th style="width: 45%;">网址</th>
-                                <th style="width: 15%; text-align: right;">操作</th>
+                                <th style="width: 20%;">网站名称</th>
+                                <th style="width: 30%;">描述</th>
+                                <th style="width: 25%;">网址</th>
+                                <th style="width: 10%; text-align: right;">操作</th>
                             </tr>
                         </thead>
                         <tbody id="bookmark-list">
@@ -790,11 +828,16 @@
             <input type="hidden" id="bm-id">
             <div class="form-row">
                 <label for="bm-title"><i class="fas fa-heading"></i> 书签标题</label>
-                <input type="text" id="bm-title" placeholder="输入书签标题">
+                <input type="text" id="bm-title" placeholder="输入书签标题" required>
+            </div>
+            <div class="form-row">
+                <label for="bm-description"><i class="fas fa-comment-alt"></i> 网站描述</label>
+                <textarea id="bm-description" rows="3" placeholder="可选：描述网站的功能或用途..."></textarea>
+                <div class="form-hint">选填，用于说明网站的主要功能或用途</div>
             </div>
             <div class="form-row">
                 <label for="bm-url"><i class="fas fa-link"></i> 书签网址</label>
-                <input type="url" id="bm-url" placeholder="https://...">
+                <input type="url" id="bm-url" placeholder="https://..." required>
             </div>
             <div class="form-row">
                 <label for="bm-folder"><i class="fas fa-folder"></i> 文件夹</label>
@@ -875,6 +918,7 @@
         let folderPathMap = {};
         let draggedItem = null;
         let dragOverItem = null;
+        let isSaving = false; // 防止重复保存的标志
 
         // --- 核心功能 ---
         function generateId() {
@@ -919,6 +963,12 @@
         }
 
         async function updateGist() {
+            if (isSaving) {
+                console.log('正在保存中，跳过重复请求');
+                return true;
+            }
+            
+            isSaving = true;
             try {
                 const data = {
                     folders: folders.map(f => ({
@@ -927,7 +977,8 @@
                     })),
                     bookmarks: bookmarks.map(b => ({
                         ...b,
-                        order: b.order || 0
+                        order: b.order || 0,
+                        description: b.description || '' // 确保description字段存在
                     })),
                     trash
                 };
@@ -949,6 +1000,8 @@
                 console.error('Update Gist failed:', error);
                 showToast('保存失败，请检查网络或Token权限。', 'error');
                 return false;
+            } finally {
+                isSaving = false;
             }
         }
         
@@ -1110,15 +1163,16 @@
                 <tr>
                     <th style="width: 5%;"></th>
                     <th style="width: 10%;">序号</th>
-                    <th style="width: 25%;">网站名称</th>
-                    <th style="width: 45%;">网址</th>
-                    <th style="width: 15%; text-align: right;">操作</th>
+                    <th style="width: 20%;">网站名称</th>
+                    <th style="width: 30%;">描述</th>
+                    <th style="width: 25%;">网址</th>
+                    <th style="width: 10%; text-align: right;">操作</th>
                 </tr>`;
 
             if (currentBookmarks.length === 0) {
                 bookmarkList.innerHTML = `
                     <tr>
-                        <td colspan="5">
+                        <td colspan="6">
                             <div class="empty-state">
                                 <i class="fas fa-bookmark"></i>
                                 <h3>此文件夹为空</h3>
@@ -1144,7 +1198,10 @@
                     <td class="bookmark-title" onclick="openBookmark('${bm.url}')">
                         ${bm.title}
                     </td>
-                    <td class="bookmark-url">${bm.url}</td>
+                    <td class="bookmark-description" title="${bm.description || ''}">
+                        ${bm.description || '<span style="color: #666; font-style: italic;">暂无描述</span>'}
+                    </td>
+                    <td class="bookmark-url" title="${bm.url}">${bm.url}</td>
                     <td>
                         <div class="bookmark-actions">
                             <button class="action-btn" onclick="openEditBookmarkForm('${bm.id}')" title="编辑">
@@ -1164,15 +1221,16 @@
                 <tr>
                     <th style="width: 5%;"></th>
                     <th style="width: 10%;">序号</th>
-                    <th style="width: 30%;">网站名称</th>
-                    <th style="width: 40%;">原始路径</th>
-                    <th style="width: 15%; text-align: right;">操作</th>
+                    <th style="width: 20%;">网站名称</th>
+                    <th style="width: 30%;">描述</th>
+                    <th style="width: 25%;">原始路径</th>
+                    <th style="width: 10%; text-align: right;">操作</th>
                 </tr>`;
 
             if (trash.length === 0) {
                 bookmarkList.innerHTML = `
                     <tr>
-                        <td colspan="5">
+                        <td colspan="6">
                             <div class="empty-state">
                                 <i class="fas fa-trash-alt"></i>
                                 <h3>回收站是空的</h3>
@@ -1189,6 +1247,7 @@
                     <td></td>
                     <td class="order-number">${index + 1}</td>
                     <td class="bookmark-title">${item.title}</td>
+                    <td class="bookmark-description">${item.description || '<span style="color: #666; font-style: italic;">暂无描述</span>'}</td>
                     <td class="bookmark-url" title="${pathText}">${pathText}</td>
                     <td>
                         <div class="bookmark-actions">
@@ -1224,9 +1283,18 @@
 
         // --- 数据操作 & 业务逻辑 ---
         async function saveAndRender() {
-            if (await updateGist()) {
-                renderApp();
-            }
+            // 立即更新UI
+            renderApp();
+            
+            // 异步保存到Gist
+            updateGist().then(success => {
+                if (success) {
+                    console.log('数据已保存到Gist');
+                }
+            }).catch(error => {
+                console.error('保存失败:', error);
+                showToast('保存失败，但本地数据已更新', 'warning');
+            });
         }
         
         function buildFolderPathMap() {
@@ -1317,6 +1385,7 @@
             document.getElementById('bm-id').value = '';
             document.getElementById('bm-title').value = '';
             document.getElementById('bm-url').value = '';
+            document.getElementById('bm-description').value = '';
             refreshFolderSelectors(currentFolderId);
             bookmarkFormContainer.classList.add('active');
         }
@@ -1330,6 +1399,7 @@
             document.getElementById('bm-id').value = bookmark.id;
             document.getElementById('bm-title').value = bookmark.title;
             document.getElementById('bm-url').value = bookmark.url;
+            document.getElementById('bm-description').value = bookmark.description || '';
             refreshFolderSelectors(bookmark.folderId);
             bookmarkFormContainer.classList.add('active');
         }
@@ -1359,6 +1429,7 @@
             const id = document.getElementById('bm-id').value;
             const title = document.getElementById('bm-title').value.trim();
             const url = document.getElementById('bm-url').value.trim();
+            const description = document.getElementById('bm-description').value.trim();
             const folderId = document.getElementById('bm-folder').value;
 
             if (!title || !url) {
@@ -1378,6 +1449,7 @@
                         ...bookmarks[index],
                         title,
                         url,
+                        description,
                         folderId
                     };
                     showToast('书签已更新', 'success');
@@ -1388,6 +1460,7 @@
                     id: generateId(),
                     title,
                     url,
+                    description,
                     folderId,
                     order: bookmarks.filter(b => b.folderId === folderId).length
                 };
@@ -1729,6 +1802,8 @@
                 });
                 bookmarks.forEach(bookmark => {
                     if (bookmark.order === undefined) bookmark.order = 0;
+                    // 确保description字段存在（兼容旧数据）
+                    if (bookmark.description === undefined) bookmark.description = '';
                 });
                 
                 showAppView();
@@ -1847,4 +1922,3 @@
     </script>
 </body>
 </html>
-
