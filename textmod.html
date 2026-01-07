@@ -1,1924 +1,283 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow">
-    <title>加密书签管理器</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --bg-color: #1a1a1a;
-            --text-color: #f0f0f0;
-            --primary-color: #007bff;
-            --secondary-color: #333;
-            --border-color: #444;
-            --hover-color: #0056b3;
-            --error-color: #dc3545;
-            --success-color: #28a745;
-            --sidebar-bg: #252525;
-            --sidebar-width: 300px;
-            --header-height: 60px;
-            --row-hover: rgba(255, 255, 255, 0.05);
-            --active-bg: rgba(0, 123, 255, 0.15);
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        
-        .header {
-            height: var(--header-height);
-            background-color: var(--secondary-color);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            border-bottom: 1px solid var(--border-color);
-            flex-shrink: 0;
-        }
-        
-        .header h1 {
-            color: var(--primary-color);
-            font-size: 1.5rem;
-        }
-        
-        .main-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-            height: calc(100vh - var(--header-height));
-        }
-        
-        /* 左侧目录树样式 */
-        .sidebar {
-            width: var(--sidebar-width);
-            background-color: var(--sidebar-bg);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        
-        .sidebar-header {
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--border-color);
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .folder-tree-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px 0;
-        }
-        
-        .folder-tree {
-            list-style: none;
-            padding-left: 0;
-            user-select: none;
-        }
-        
-        .folder-item {
-            padding: 8px 15px 8px 10px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            transition: background-color 0.2s;
-            position: relative;
-            min-height: 36px;
-            white-space: nowrap;
-        }
-        
-        .folder-item:hover {
-            background-color: var(--row-hover);
-        }
-        
-        .folder-item.active {
-            background-color: var(--active-bg);
-            color: var(--primary-color);
-        }
-        
-        .folder-icon {
-            margin-right: 8px;
-            width: 16px;
-            text-align: center;
-            color: var(--primary-color);
-            flex-shrink: 0;
-        }
-        
-        .folder-name {
-            flex: 1;
-            font-size: 14px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            min-width: 0; /* 允许文本截断 */
-        }
-        
-        .folder-children {
-            list-style: none;
-            padding-left: 0;
-        }
-        
-        .folder-item.expanded .folder-children {
-            display: block;
-        }
-        
-        .folder-toggle {
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 4px;
-            flex-shrink: 0;
-            transition: transform 0.2s;
-            color: #666;
-            cursor: pointer;
-        }
-        
-        .folder-toggle.empty {
-            visibility: hidden;
-        }
-        
-        .folder-item.expanded .folder-toggle {
-            transform: rotate(90deg);
-        }
-        
-        .folder-toggle i {
-            font-size: 10px;
-        }
-        
-        /* 右侧内容区域样式 */
-        .content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
-        }
-        
-        .toolbar {
-            display: flex;
-            justify-content: space-between;
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--border-color);
-            background-color: var(--secondary-color);
-            flex-shrink: 0;
-        }
-        
-        .current-folder {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: var(--primary-color);
-            display: flex;
-            align-items: center;
-        }
-        
-        .folder-path {
-            display: flex;
-            align-items: center;
-            font-size: 14px;
-            padding: 10px 15px;
-            border-bottom: 1px solid var(--border-color);
-            background-color: var(--secondary-color);
-            flex-wrap: wrap;
-        }
-        
-        .path-segment {
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
-        
-        .path-segment:hover {
-            background-color: var(--row-hover);
-        }
-        
-        .path-divider {
-            margin: 0 5px;
-            color: #666;
-        }
-        
-        .btn-group {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .btn {
-            padding: 8px 15px;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .btn i {
-            font-size: 0.9rem;
-        }
-        
-        .btn:hover {
-            background-color: var(--hover-color);
-        }
-        
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--primary-color);
-            color: var(--primary-color);
-        }
-        
-        .btn-outline:hover {
-            background-color: rgba(0, 123, 255, 0.1);
-        }
-        
-        /* 书签列表样式 */
-        .bookmark-list-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px;
-        }
-        
-        .bookmark-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .bookmark-table th {
-            text-align: left;
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--border-color);
-            background-color: var(--secondary-color);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            font-weight: 500;
-        }
-        
-        .bookmark-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--border-color);
-            vertical-align: middle;
-        }
-        
-        .bookmark-row:hover {
-            background-color: var(--row-hover);
-        }
-
-        .bookmark-row.dragging {
-            opacity: 0.5;
-            background: var(--secondary-color);
-        }
-        
-        /* 序号样式 */
-        .order-number {
-            width: 40px;
-            text-align: center;
-            color: #888;
-            font-size: 12px;
-            font-weight: 500;
-            user-select: none;
-        }
-        
-        .bookmark-title {
-            font-weight: 500;
-            max-width: 200px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            cursor: pointer;
-        }
-        
-        .bookmark-title:hover {
-            color: var(--primary-color);
-            text-decoration: underline;
-        }
-        
-        .bookmark-description {
-            color: #aaa;
-            max-width: 300px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .bookmark-url {
-            color: #aaa;
-            max-width: 300px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .bookmark-actions {
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-        }
-        
-        .action-btn {
-            background: none;
-            border: none;
-            color: #ccc;
-            cursor: pointer;
-            padding: 5px 8px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .action-btn:hover {
-            color: var(--primary-color);
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        /* 子文件夹列表样式 */
-        .subfolders-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .folder-card {
-            background-color: var(--secondary-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 15px;
-            width: 180px;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        
-        .folder-card:hover {
-            background-color: rgba(0, 123, 255, 0.1);
-            border-color: var(--primary-color);
-            transform: translateY(-3px);
-        }
-        
-        .folder-card-content {
-            flex-grow: 1;
-        }
-
-        .folder-card-icon {
-            font-size: 2.5rem;
-            color: var(--primary-color);
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        
-        .folder-card-name {
-            font-size: 15px;
-            font-weight: 500;
-            text-align: center;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            margin-bottom: 15px;
-        }
-        
-        .folder-card-actions {
-            display: flex;
-            justify-content: space-around;
-            border-top: 1px solid var(--border-color);
-            padding-top: 12px;
-            margin-top: 8px;
-        }
-        
-        /* 表单样式 */
-        .form-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1001;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
-        }
-        
-        .form-container.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-        
-        .add-form {
-            background-color: var(--secondary-color);
-            padding: 25px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            width: 100%;
-            max-width: 600px;
-            transform: translateY(20px);
-            transition: transform 0.3s;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-        
-        .form-container.active .add-form {
-            transform: translateY(0);
-        }
-        
-        .form-row {
-            margin-bottom: 15px;
-        }
-        
-        .form-row label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            font-size: 14px;
-        }
-        
-        input[type="text"], 
-        input[type="url"],
-        input[type="password"],
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: inherit;
-            resize: vertical;
-        }
-        
-        select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-        }
-        
-        .form-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        /* 认证界面样式 */
-        .auth-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        
-        .auth-box {
-            background-color: var(--secondary-color);
-            padding: 30px;
-            border-radius: 8px;
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-            border: 1px solid var(--border-color);
-        }
-        
-        .auth-title {
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            font-size: 1.4rem;
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        .loader {
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            border-top: 4px solid var(--primary-color);
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .error-message {
-            color: var(--error-color);
-            margin-top: 10px;
-            font-size: 14px;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #9aa0a6;
-        }
-        
-        .empty-state i {
-            font-size: 48px;
-            opacity: 0.3;
-            margin-bottom: 15px;
-            color: var(--primary-color);
-        }
-        
-        .empty-state h3 {
-            font-size: 18px;
-            margin-bottom: 10px;
-            color: var(--text-color);
-        }
-        
-        .empty-state p {
-            font-size: 14px;
-        }
-        
-        /* 拖放样式 */
-        .draggable {
-            cursor: grab;
-        }
-        
-        .drop-target {
-            background-color: rgba(0, 123, 255, 0.1);
-            border: 2px dashed var(--primary-color);
-        }
-        
-        .drop-indicator {
-            height: 3px;
-            background-color: var(--primary-color);
-            margin: 2px 0;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-        
-        .drop-indicator.show {
-            opacity: 1;
-        }
-        
-        /* 悬浮提示样式 */
-        .toast-container {
-            position: fixed;
-            left: 20px;
-            bottom: 20px;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .toast {
-            padding: 16px 24px;
-            background-color: #333;
-            color: white;
-            border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.3s, transform 0.3s;
-            max-width: 400px;
-            display: flex;
-            align-items: center;
-            animation: slideIn 0.3s forwards;
-        }
-        
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        .toast.error {
-            background-color: var(--error-color);
-        }
-        
-        .toast.success {
-            background-color: var(--success-color);
-        }
-        
-        .toast.warning {
-            background-color: #ffc107;
-            color: #333;
-        }
-        
-        .toast.info {
-            background-color: var(--primary-color);
-        }
-        
-        .toast-icon {
-            margin-right: 12px;
-            font-size: 20px;
-        }
-        
-        .toast-message {
-            flex: 1;
-            font-size: 14px;
-            line-height: 1.4;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* 层级缩进 */
-        .tree-level-0 { padding-left: 10px; }
-        .tree-level-1 { padding-left: 30px; }
-        .tree-level-2 { padding-left: 50px; }
-        .tree-level-3 { padding-left: 70px; }
-        .tree-level-4 { padding-left: 90px; }
-        .tree-level-5 { padding-left: 110px; }
-        
-        /* 拖动手柄 */
-        .drag-handle {
-            cursor: grab;
-            color: #666;
-            margin-right: 8px;
-            width: 16px;
-            text-align: center;
-            flex-shrink: 0;
-        }
-        
-        .drag-handle:hover {
-            color: var(--text-color);
-        }
-        
-        /* 滚动条样式 */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: var(--secondary-color);
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #555;
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: #666;
-        }
-        
-        /* 排序指示器 */
-        .sort-badge {
-            display: inline-block;
-            background-color: rgba(0, 123, 255, 0.2);
-            color: var(--primary-color);
-            font-size: 11px;
-            padding: 1px 5px;
-            border-radius: 10px;
-            margin-left: 8px;
-            vertical-align: middle;
-        }
-        
-        /* 描述字段提示文本 */
-        .form-hint {
-            color: #888;
-            font-size: 12px;
-            margin-top: 4px;
-            font-style: italic;
-        }
-        
-        /* 自适应表格列宽 */
-        @media (max-width: 1200px) {
-            .bookmark-description,
-            .bookmark-url {
-                max-width: 200px;
-            }
-        }
-        
-        @media (max-width: 1000px) {
-            .bookmark-title {
-                max-width: 150px;
-            }
-            .bookmark-description,
-            .bookmark-url {
-                max-width: 150px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>文字模板生成器</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./index.js"></script>
 </head>
+
 <body>
-    <div id="toast-container" class="toast-container"></div>
+  <script>
+    // 1. 清除原网页内容
+    document.body.innerHTML = '';
+    document.body.style.backgroundColor = '#f8f8f8';
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
 
-    <div id="auth-container" class="auth-container">
-        <div class="auth-box">
-            <h2 class="auth-title">加密书签管理器</h2>
-            <div class="form-row">
-                <input type="password" id="password" placeholder="请输入密码..." autocomplete="current-password">
-            </div>
-            <button id="login-btn" class="btn"><i class="fas fa-lock-open"></i> 解锁 / 创建</button>
-            <div id="auth-loader" class="loader hidden"></div>
-            <p id="auth-error" class="error-message"></p>
-        </div>
-    </div>
+    // 2. 使用Fetch API动态加载字体
+    async function loadFontCSS(main, fallback) {
+        try {
+            let response = await fetch(main, { method: "GET", mode: "cors" });
+            if (!response.ok) throw new Error('Main font load failed');
+            let cssText = await response.text();
+            const baseUrl = main.replace(/result\.css$/, "");
 
-    <div id="app-container" class="hidden">
-        <div class="header">
-            <h1><i class="fas fa-bookmark"></i> 加密书签管理器</h1>
-            <button id="logout-btn" class="btn"><i class="fas fa-lock"></i> 锁定</button>
-        </div>
-        
-        <div class="main-container">
-            <!-- 左侧目录树 -->
-            <div class="sidebar">
-                <div class="sidebar-header">
-                    <span><i class="fas fa-folder-tree"></i> 目录树</span>
-                </div>
-                <div class="folder-tree-container">
-                    <ul class="folder-tree" id="folder-tree">
-                        <!-- 目录树将通过JavaScript动态生成 -->
-                    </ul>
-                    <div style="border-top: 1px solid var(--border-color); margin-top: 10px; padding-top: 10px;">
-                        <div class="folder-item" data-id="trash" onclick="selectFolder('trash')">
-                            <span class="folder-icon"><i class="fas fa-trash"></i></span>
-                            <span class="folder-name">回收站</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 右侧内容区域 -->
-            <div class="content">
-                <div class="toolbar">
-                    <div class="current-folder">
-                        <i id="current-folder-icon" class="fas fa-folder-open"></i>
-                        <span id="current-folder-name">所有书签</span>
-                    </div>
-                    <div class="btn-group">
-                        <button id="add-bookmark-btn" class="btn"><i class="fas fa-plus"></i> 添加书签</button>
-                        <button id="add-folder-btn" class="btn"><i class="fas fa-folder-plus"></i> 添加文件夹</button>
-                        <button id="open-all-btn" class="btn btn-outline"><i class="fas fa-external-link-alt"></i> 打开全部</button>
-                    </div>
-                </div>
-                
-                <div class="folder-path" id="folder-path">
-                    <!-- 路径导航将通过JavaScript动态生成 -->
-                </div>
-                
-                <div class="subfolders-container" id="subfolders-container">
-                    <!-- 子文件夹将通过JavaScript动态生成 -->
-                </div>
-                
-                <div class="bookmark-list-container">
-                    <table class="bookmark-table">
-                        <thead id="bookmark-table-header">
-                            <tr>
-                                <th style="width: 5%;"></th> <!-- 拖动手柄列 -->
-                                <th style="width: 10%;">序号</th>
-                                <th style="width: 20%;">网站名称</th>
-                                <th style="width: 30%;">描述</th>
-                                <th style="width: 25%;">网址</th>
-                                <th style="width: 10%; text-align: right;">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bookmark-list">
-                            <!-- 书签列表将通过JavaScript动态生成 -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+            const style = document.createElement('style');
+            style.textContent = cssText.replace(
+                /url\(['"]?.\/([^'")]+)['"]?\)/g,
+                `url("${baseUrl}$1")`
+            );
+            document.head.appendChild(style);
 
-    <!-- 书签表单 -->
-    <div id="bookmark-form-container" class="form-container">
-        <div class="add-form">
-            <h3 id="bookmark-form-title" style="margin-bottom: 20px; color: var(--primary-color);"></h3>
-            <input type="hidden" id="bm-id">
-            <div class="form-row">
-                <label for="bm-title"><i class="fas fa-heading"></i> 书签标题</label>
-                <input type="text" id="bm-title" placeholder="输入书签标题" required>
-            </div>
-            <div class="form-row">
-                <label for="bm-description"><i class="fas fa-comment-alt"></i> 网站描述</label>
-                <textarea id="bm-description" rows="3" placeholder="可选：描述网站的功能或用途..."></textarea>
-                <div class="form-hint">选填，用于说明网站的主要功能或用途</div>
-            </div>
-            <div class="form-row">
-                <label for="bm-url"><i class="fas fa-link"></i> 书签网址</label>
-                <input type="url" id="bm-url" placeholder="https://..." required>
-            </div>
-            <div class="form-row">
-                <label for="bm-folder"><i class="fas fa-folder"></i> 文件夹</label>
-                <select id="bm-folder">
-                    <!-- 文件夹选项将通过JavaScript动态生成 -->
-                </select>
-            </div>
-            <div class="form-actions">
-                <button id="cancel-bookmark-form" class="btn btn-outline">取消</button>
-                <button id="save-bookmark-form" class="btn">保存</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 文件夹表单 -->
-    <div id="folder-form-container" class="form-container">
-        <div class="add-form">
-            <h3 id="folder-form-title" style="margin-bottom: 20px; color: var(--primary-color);"></h3>
-            <input type="hidden" id="folder-id">
-            <div class="form-row">
-                <label for="folder-name"><i class="fas fa-folder"></i> 文件夹名称</label>
-                <input type="text" id="folder-name" placeholder="输入文件夹名称">
-            </div>
-            <div class="form-row">
-                <label for="parent-folder"><i class="fas fa-sitemap"></i> 父文件夹</label>
-                <select id="parent-folder">
-                    <!-- 父文件夹选项将通过JavaScript动态生成 -->
-                </select>
-            </div>
-            <div class="form-actions">
-                <button id="cancel-folder-form" class="btn btn-outline">取消</button>
-                <button id="save-folder-form" class="btn">保存</button>
-            </div>
-        </div>
-    </div>
+            return true;
+        } catch (error) {
+            console.warn('主字体加载失败:', error);
+            if (fallback) {
+                try {
+                    let response = await fetch(fallback, { method: "GET", mode: "cors" });
+                    if (!response.ok) throw new Error('Fallback font load failed');
+                    let cssText = await response.text();
+                    const baseUrl = fallback.replace(/result\.css$/, "");
 
-    <script>
-        // --- 用户配置 ---
-        const GIST_ID = "16bea01441ec8fba4df2d299162dc7e3"; // 请替换为你的 Gist ID
-        const GITHUB_TOKEN_HEAD = "ghp_";
-        const GITHUB_TOKEN = GITHUB_TOKEN_HEAD + "pwrx9hT4JmyKjmMsMSt1zoI6rmKzMR0W9Wpk"; // 请替换为你的 GitHub Personal Access Token
-        // --- 配置结束 ---
-
-        const GIST_URL = `https://api.github.com/gists/${GIST_ID}`;
-
-        // DOM 元素
-        const authContainer = document.getElementById('auth-container');
-        const appContainer = document.getElementById('app-container');
-        const passwordInput = document.getElementById('password');
-        const loginBtn = document.getElementById('login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const authLoader = document.getElementById('auth-loader');
-        const authError = document.getElementById('auth-error');
-        const bookmarkList = document.getElementById('bookmark-list');
-        const bookmarkTableHeader = document.getElementById('bookmark-table-header');
-        const folderTree = document.getElementById('folder-tree');
-        const currentFolderName = document.getElementById('current-folder-name');
-        const currentFolderIcon = document.getElementById('current-folder-icon');
-        const folderPath = document.getElementById('folder-path');
-        const subfoldersContainer = document.getElementById('subfolders-container');
-        const addBookmarkBtn = document.getElementById('add-bookmark-btn');
-        const addFolderBtn = document.getElementById('add-folder-btn');
-        const openAllBtn = document.getElementById('open-all-btn');
-        const toastContainer = document.getElementById('toast-container');
-        
-        // 表单 DOM
-        const bookmarkFormContainer = document.getElementById('bookmark-form-container');
-        const folderFormContainer = document.getElementById('folder-form-container');
-        const bmFolderSelect = document.getElementById('bm-folder');
-        const parentFolderSelect = document.getElementById('parent-folder');
-
-        // 全局变量
-        let encryptionKey = null;
-        let bookmarks = [];
-        let folders = [];
-        let trash = [];
-        let currentFolderId = 'root';
-        let folderPathMap = {};
-        let draggedItem = null;
-        let dragOverItem = null;
-        let isSaving = false; // 防止重复保存的标志
-
-        // --- 核心功能 ---
-        function generateId() {
-            return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-        }
-        
-        function encrypt(text, key) {
-            return CryptoJS.AES.encrypt(text, key).toString();
-        }
-        
-        function decrypt(ciphertext, key) {
-            try {
-                const bytes = CryptoJS.AES.decrypt(ciphertext, key);
-                return bytes.toString(CryptoJS.enc.Utf8);
-            } catch (e) {
-                return '';
-            }
-        }
-
-        // --- API 调用 ---
-        async function fetchGist() {
-            toggleLoader(authLoader, true);
-            authError.textContent = '';
-            try {
-                const response = await fetch(GIST_URL, {
-                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-                });
-                if (!response.ok) throw new Error(`GitHub API Error: ${response.statusText}`);
-                const gist = await response.json();
-                if (!gist.files || !gist.files['bookmarks.json']) {
-                    showToast('Gist中未找到 bookmarks.json 文件。', 'warning');
-                    return '{}';
-                }
-                return gist.files['bookmarks.json'].content;
-            } catch (error) {
-                console.error('Fetch Gist failed:', error);
-                showToast('获取数据失败。请检查Gist ID和Token。', 'error');
-                return null;
-            } finally {
-                toggleLoader(authLoader, false);
-            }
-        }
-
-        async function updateGist() {
-            if (isSaving) {
-                console.log('正在保存中，跳过重复请求');
-                return true;
-            }
-            
-            isSaving = true;
-            try {
-                const data = {
-                    folders: folders.map(f => ({
-                        ...f,
-                        order: f.order || 0
-                    })),
-                    bookmarks: bookmarks.map(b => ({
-                        ...b,
-                        order: b.order || 0,
-                        description: b.description || '' // 确保description字段存在
-                    })),
-                    trash
-                };
-                const encryptedData = encrypt(JSON.stringify(data), encryptionKey);
-                
-                const response = await fetch(GIST_URL, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        files: { 'bookmarks.json': { content: encryptedData } }
-                    })
-                });
-                if (!response.ok) throw new Error('Update Gist failed');
-                return true;
-            } catch (error) {
-                console.error('Update Gist failed:', error);
-                showToast('保存失败，请检查网络或Token权限。', 'error');
-                return false;
-            } finally {
-                isSaving = false;
-            }
-        }
-        
-        // --- 渲染逻辑 ---
-        function renderApp() {
-            buildFolderPathMap();
-            renderFolderTreeUI();
-            selectFolder(currentFolderId, true);
-        }
-
-        function renderFolderTreeUI() {
-            // 构建完整的目录树HTML
-            let html = '';
-            
-            // 根目录项
-            const isRootActive = currentFolderId === 'root';
-            const rootHasChildren = folders.some(f => f.parentId === 'root');
-            html += `
-                <li>
-                    <div class="folder-item tree-level-0 ${isRootActive ? 'active' : ''}" 
-                         data-id="root"
-                         onclick="selectFolder('root')">
-                        <div class="folder-toggle ${rootHasChildren ? '' : 'empty'}" onclick="event.stopPropagation(); toggleFolderExpand('root')">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                        <span class="folder-icon"><i class="fas fa-folder-open"></i></span>
-                        <span class="folder-name">所有书签</span>
-                    </div>
-                    <ul class="folder-children" id="root-children" style="${isFolderExpanded('root') ? 'display: block;' : 'display: none;'}">
-                        ${renderFolderChildren('root', 1)}
-                    </ul>
-                </li>
-            `;
-            
-            folderTree.innerHTML = html;
-        }
-
-        function renderFolderChildren(parentId, level) {
-            const children = folders.filter(f => f.parentId === parentId)
-                .sort((a, b) => (a.order || 0) - (b.order || 0));
-            
-            if (children.length === 0) {
-                return '';
-            }
-            
-            let html = '';
-            
-            children.forEach(folder => {
-                const isActive = folder.id === currentFolderId;
-                const hasChildren = folders.some(f => f.parentId === folder.id);
-                const isExpanded = isFolderExpanded(folder.id);
-                
-                html += `
-                    <li>
-                        <div class="folder-item tree-level-${level} ${isActive ? 'active' : ''}" 
-                             data-id="${folder.id}"
-                             draggable="true"
-                             ondragstart="onFolderDragStart(event, '${folder.id}')"
-                             ondragover="onFolderDragOver(event, '${folder.id}')"
-                             ondragleave="onFolderDragLeave(event, '${folder.id}')"
-                             ondrop="onFolderDrop(event, '${folder.id}')"
-                             onclick="selectFolder('${folder.id}')">
-                            <div class="drag-handle" onclick="event.stopPropagation()">
-                                <i class="fas fa-grip-vertical"></i>
-                            </div>
-                            <div class="folder-toggle ${hasChildren ? '' : 'empty'}" onclick="event.stopPropagation(); toggleFolderExpand('${folder.id}')">
-                                <i class="fas fa-chevron-right"></i>
-                            </div>
-                            <span class="folder-icon">
-                                <i class="fas ${isExpanded && hasChildren ? 'fa-folder-open' : 'fa-folder'}"></i>
-                            </span>
-                            <span class="folder-name">${folder.name}</span>
-                            <span class="sort-badge" title="排序: ${folder.order || 0}">${folder.order || 0}</span>
-                        </div>
-                        <ul class="folder-children" id="${folder.id}-children" style="${isExpanded ? 'display: block;' : 'display: none;'}">
-                            ${renderFolderChildren(folder.id, level + 1)}
-                        </ul>
-                    </li>
-                `;
-            });
-            
-            return html;
-        }
-
-        function isFolderExpanded(folderId) {
-            if (folderId === 'root') return true; // 根目录默认展开
-            const folder = folders.find(f => f.id === folderId);
-            return folder ? (folder.expanded || false) : false;
-        }
-        
-        function renderMainContent() {
-            const isTrashView = currentFolderId === 'trash';
-            
-            // 更新工具栏按钮状态
-            addBookmarkBtn.classList.toggle('hidden', isTrashView);
-            addFolderBtn.classList.toggle('hidden', isTrashView);
-            openAllBtn.classList.toggle('hidden', isTrashView);
-
-            // 更新头部
-            const folder = folders.find(f => f.id === currentFolderId);
-            currentFolderName.textContent = isTrashView ? "回收站" : (folder ? folder.name : "所有书签");
-            currentFolderIcon.className = `fas ${isTrashView ? 'fa-trash' : 'fa-folder-open'}`;
-
-            // 渲染路径、子文件夹和书签列表
-            renderFolderPath();
-            if (isTrashView) {
-                subfoldersContainer.innerHTML = '';
-                renderTrashList();
-            } else {
-                renderSubfolders();
-                renderBookmarks();
-            }
-        }
-        
-        function renderFolderPath() {
-            if (currentFolderId === 'trash') {
-                folderPath.innerHTML = '<div class="path-segment">回收站</div>';
-                return;
-            }
-            const pathItems = getFolderPath(currentFolderId);
-            folderPath.innerHTML = pathItems.map((item, index) => 
-                `<div class="path-segment" onclick="selectFolder('${item.id}')">${item.name}</div>`
-            ).join('<div class="path-divider">/</div>');
-        }
-
-        function renderSubfolders() {
-            const subfolders = folders.filter(f => f.parentId === currentFolderId)
-                .sort((a, b) => (a.order || 0) - (b.order || 0));
-            
-            if (subfolders.length === 0) {
-                subfoldersContainer.innerHTML = '';
-                return;
-            }
-            
-            subfoldersContainer.innerHTML = subfolders.map(folder => `
-                <div class="folder-card" data-id="${folder.id}"
-                     onclick="selectFolder('${folder.id}')">
-                    <div class="folder-card-content">
-                        <div class="folder-card-icon"><i class="fas fa-folder"></i></div>
-                        <div class="folder-card-name">${folder.name}</div>
-                        <div style="text-align: center; font-size: 12px; color: #666; margin-top: 5px;">
-                            排序: ${folder.order || 0}
-                        </div>
-                    </div>
-                    <div class="folder-card-actions" onclick="event.stopPropagation()">
-                        <button class="action-btn" onclick="openEditFolderForm('${folder.id}')" title="编辑"><i class="fas fa-edit"></i></button>
-                        <button class="action-btn" onclick="deleteFolder('${folder.id}')" title="删除"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function renderBookmarks() {
-            const currentBookmarks = bookmarks.filter(bm => bm.folderId === currentFolderId)
-                .sort((a, b) => (a.order || 0) - (b.order || 0));
-            
-            // 更新表头
-            bookmarkTableHeader.innerHTML = `
-                <tr>
-                    <th style="width: 5%;"></th>
-                    <th style="width: 10%;">序号</th>
-                    <th style="width: 20%;">网站名称</th>
-                    <th style="width: 30%;">描述</th>
-                    <th style="width: 25%;">网址</th>
-                    <th style="width: 10%; text-align: right;">操作</th>
-                </tr>`;
-
-            if (currentBookmarks.length === 0) {
-                bookmarkList.innerHTML = `
-                    <tr>
-                        <td colspan="6">
-                            <div class="empty-state">
-                                <i class="fas fa-bookmark"></i>
-                                <h3>此文件夹为空</h3>
-                                <p>点击上方按钮添加新书签。</p>
-                            </div>
-                        </td>
-                    </tr>`;
-                return;
-            }
-            
-            bookmarkList.innerHTML = currentBookmarks.map((bm, index) => `
-                <tr class="bookmark-row" data-id="${bm.id}" draggable="true"
-                    ondragstart="onBookmarkDragStart(event, '${bm.id}')"
-                    ondragover="onBookmarkDragOver(event, '${bm.id}')"
-                    ondragleave="onBookmarkDragLeave(event, '${bm.id}')"
-                    ondrop="onBookmarkDrop(event, '${bm.id}')">
-                    <td>
-                        <div class="drag-handle">
-                            <i class="fas fa-grip-vertical"></i>
-                        </div>
-                    </td>
-                    <td class="order-number">${index + 1}</td>
-                    <td class="bookmark-title" onclick="openBookmark('${bm.url}')">
-                        ${bm.title}
-                    </td>
-                    <td class="bookmark-description" title="${bm.description || ''}">
-                        ${bm.description || '<span style="color: #666; font-style: italic;">暂无描述</span>'}
-                    </td>
-                    <td class="bookmark-url" title="${bm.url}">${bm.url}</td>
-                    <td>
-                        <div class="bookmark-actions">
-                            <button class="action-btn" onclick="openEditBookmarkForm('${bm.id}')" title="编辑">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="action-btn" onclick="moveToTrash('${bm.id}')" title="删除">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function renderTrashList() {
-            bookmarkTableHeader.innerHTML = `
-                <tr>
-                    <th style="width: 5%;"></th>
-                    <th style="width: 10%;">序号</th>
-                    <th style="width: 20%;">网站名称</th>
-                    <th style="width: 30%;">描述</th>
-                    <th style="width: 25%;">原始路径</th>
-                    <th style="width: 10%; text-align: right;">操作</th>
-                </tr>`;
-
-            if (trash.length === 0) {
-                bookmarkList.innerHTML = `
-                    <tr>
-                        <td colspan="6">
-                            <div class="empty-state">
-                                <i class="fas fa-trash-alt"></i>
-                                <h3>回收站是空的</h3>
-                            </div>
-                        </td>
-                    </tr>`;
-                return;
-            }
-
-            bookmarkList.innerHTML = trash.map((item, index) => {
-                const pathText = getFolderPath(item.folderId).map(p => p.name).join(' / ');
-                return `
-                <tr class="bookmark-row" data-id="${item.id}">
-                    <td></td>
-                    <td class="order-number">${index + 1}</td>
-                    <td class="bookmark-title">${item.title}</td>
-                    <td class="bookmark-description">${item.description || '<span style="color: #666; font-style: italic;">暂无描述</span>'}</td>
-                    <td class="bookmark-url" title="${pathText}">${pathText}</td>
-                    <td>
-                        <div class="bookmark-actions">
-                            <button class="action-btn" onclick="restoreFromTrash('${item.id}')" title="恢复">
-                                <i class="fas fa-undo"></i>
-                            </button>
-                            <button class="action-btn" onclick="deletePermanently('${item.id}')" title="永久删除">
-                                <i class="fas fa-times-circle"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>`;
-            }).join('');
-        }
-
-        function refreshFolderSelectors(selectedId = 'root') {
-            const generateOptions = (parentId, level) => {
-                const prefix = '&nbsp;&nbsp;'.repeat(level);
-                const children = folders.filter(f => f.parentId === parentId)
-                    .sort((a, b) => (a.order || 0) - (b.order || 0));
-                
-                return children.map(f => 
-                    `<option value="${f.id}">${prefix}${f.name}</option>${generateOptions(f.id, level + 1)}`
-                ).join('');
-            };
-            
-            const allOptions = `<option value="root">所有书签 (根目录)</option>${generateOptions('root', 0)}`;
-            bmFolderSelect.innerHTML = allOptions;
-            parentFolderSelect.innerHTML = allOptions;
-            bmFolderSelect.value = selectedId;
-            parentFolderSelect.value = selectedId;
-        }
-
-        // --- 数据操作 & 业务逻辑 ---
-        async function saveAndRender() {
-            // 立即更新UI
-            renderApp();
-            
-            // 异步保存到Gist
-            updateGist().then(success => {
-                if (success) {
-                    console.log('数据已保存到Gist');
-                }
-            }).catch(error => {
-                console.error('保存失败:', error);
-                showToast('保存失败，但本地数据已更新', 'warning');
-            });
-        }
-        
-        function buildFolderPathMap() {
-            folderPathMap = { 'root': [{ id: 'root', name: '所有书签' }] };
-            
-            const buildPath = (folderId, path) => {
-                const folder = folders.find(f => f.id === folderId);
-                if (!folder) return;
-                
-                const currentPath = [...path, { id: folder.id, name: folder.name }];
-                folderPathMap[folder.id] = currentPath;
-                
-                // 递归处理子文件夹
-                folders.filter(f => f.parentId === folderId).forEach(child => {
-                    buildPath(child.id, currentPath);
-                });
-            };
-            
-            // 从根目录开始构建路径
-            folders.filter(f => f.parentId === 'root').forEach(f => {
-                buildPath(f.id, [{ id: 'root', name: '所有书签' }]);
-            });
-        }
-
-        function getFolderPath(folderId) {
-            return folderPathMap[folderId] || [{ id: 'root', name: '所有书签' }];
-        }
-
-        function selectFolder(folderId, forceRefresh = false) {
-            if (currentFolderId === folderId && !forceRefresh) return;
-            currentFolderId = folderId;
-            renderMainContent();
-            
-            // 更新左侧目录树激活状态
-            document.querySelectorAll('.folder-item.active').forEach(el => {
-                el.classList.remove('active');
-            });
-            
-            const activeItems = document.querySelectorAll(`.folder-item[data-id="${folderId}"]`);
-            activeItems.forEach(item => item.classList.add('active'));
-        }
-
-        function toggleFolderExpand(folderId) {
-            const folder = folders.find(f => f.id === folderId);
-            if (folder) {
-                folder.expanded = !(folder.expanded || false);
-            } else if (folderId === 'root') {
-                // 根目录特殊处理
-                const rootElement = document.querySelector(`.folder-item[data-id="root"] .folder-toggle`);
-                const childrenElement = document.getElementById('root-children');
-                if (childrenElement) {
-                    const isExpanded = childrenElement.style.display === 'block';
-                    childrenElement.style.display = isExpanded ? 'none' : 'block';
-                    rootElement.classList.toggle('expanded', !isExpanded);
-                }
-                return;
-            }
-            
-            // 更新UI显示状态
-            const folderElement = document.querySelector(`.folder-item[data-id="${folderId}"]`);
-            const childrenElement = document.getElementById(`${folderId}-children`);
-            
-            if (folderElement && childrenElement) {
-                const isExpanded = folder ? (folder.expanded || false) : false;
-                childrenElement.style.display = isExpanded ? 'block' : 'none';
-                folderElement.classList.toggle('expanded', isExpanded);
-                
-                // 更新文件夹图标
-                const icon = folderElement.querySelector('.folder-icon i');
-                if (icon && childrenElement.children.length > 0) {
-                    icon.className = `fas ${isExpanded ? 'fa-folder-open' : 'fa-folder'}`;
+                    const style = document.createElement('style');
+                    style.textContent = cssText.replace(
+                        /url\(['"]?.\/([^'")]+)['"]?\)/g,
+                        `url("${baseUrl}$1")`
+                    );
+                    document.head.appendChild(style);
+                    return true;
+                } catch (fallbackError) {
+                    console.error('备用字体加载失败:', fallbackError);
+                    return false;
                 }
             }
+            return false;
         }
-        
-        function openFolder(folderId) {
-            selectFolder(folderId);
-        }
-        
-        function openBookmark(url) {
-            if (url) window.open(url, '_blank');
-        }
+    }
 
-        // --- 表单操作 ---
-        function openAddBookmarkForm() {
-            hideAllForms();
-            document.getElementById('bookmark-form-title').innerHTML = '<i class="fas fa-plus"></i> 添加新书签';
-            document.getElementById('bm-id').value = '';
-            document.getElementById('bm-title').value = '';
-            document.getElementById('bm-url').value = '';
-            document.getElementById('bm-description').value = '';
-            refreshFolderSelectors(currentFolderId);
-            bookmarkFormContainer.classList.add('active');
-        }
+    // 加载字体（主URL和备用URL）
+    const fontLoadedPromise = loadFontCSS(
+        "https://fontsapi.zeoseven.com/92/main/result.css",
+        "https://fontsapi-storage.zeoseven.com/92/main/result.css"
+    );
 
-        function openEditBookmarkForm(id) {
-            const bookmark = bookmarks.find(b => b.id === id);
-            if (!bookmark) return;
-            
-            hideAllForms();
-            document.getElementById('bookmark-form-title').innerHTML = '<i class="fas fa-edit"></i> 编辑书签';
-            document.getElementById('bm-id').value = bookmark.id;
-            document.getElementById('bm-title').value = bookmark.title;
-            document.getElementById('bm-url').value = bookmark.url;
-            document.getElementById('bm-description').value = bookmark.description || '';
-            refreshFolderSelectors(bookmark.folderId);
-            bookmarkFormContainer.classList.add('active');
-        }
+    // 3. 创建主容器
+    const mainContainer = document.createElement('div');
+    mainContainer.style.display = 'flex';
+    mainContainer.style.height = '100vh';
+    mainContainer.style.width = '100vw';
+    mainContainer.style.padding = '20px';
+    mainContainer.style.boxSizing = 'border-box';
+    document.body.appendChild(mainContainer);
 
-        function openAddFolderForm() {
-            hideAllForms();
-            document.getElementById('folder-form-title').innerHTML = '<i class="fas fa-folder-plus"></i> 添加新文件夹';
-            document.getElementById('folder-id').value = '';
-            document.getElementById('folder-name').value = '';
-            refreshFolderSelectors(currentFolderId);
-            folderFormContainer.classList.add('active');
-        }
+    // 4. 创建控制面板
+    const controlPanel = document.createElement('div');
+    controlPanel.style.width = '300px';
+    controlPanel.style.padding = '20px';
+    controlPanel.style.backgroundColor = '#fff';
+    controlPanel.style.borderRadius = '8px';
+    controlPanel.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+    controlPanel.style.marginRight = '20px';
+    controlPanel.style.fontFamily = '"Smiley Sans Oblique", sans-serif';
 
-        function openEditFolderForm(id) {
-            const folder = folders.find(f => f.id === id);
-            if (!folder) return;
-            
-            hideAllForms();
-            document.getElementById('folder-form-title').innerHTML = '<i class="fas fa-edit"></i> 重命名文件夹';
-            document.getElementById('folder-id').value = folder.id;
-            document.getElementById('folder-name').value = folder.name;
-            refreshFolderSelectors(folder.parentId);
-            folderFormContainer.classList.add('active');
-        }
+    // 5. 创建预览面板
+    const previewPanel = document.createElement('div');
+    previewPanel.style.flex = '1';
+    previewPanel.style.display = 'flex';
+    previewPanel.style.justifyContent = 'center';
+    previewPanel.style.alignItems = 'center';
+    previewPanel.style.backgroundColor = '#dddddd';
+    previewPanel.style.borderRadius = '8px';
+    previewPanel.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+    previewPanel.style.position = 'relative';
+    previewPanel.style.overflow = 'hidden';
 
-        async function saveBookmark() {
-            const id = document.getElementById('bm-id').value;
-            const title = document.getElementById('bm-title').value.trim();
-            const url = document.getElementById('bm-url').value.trim();
-            const description = document.getElementById('bm-description').value.trim();
-            const folderId = document.getElementById('bm-folder').value;
+    // 6. 创建预览画布
+    const previewCanvas = document.createElement('canvas');
+    previewCanvas.width = 3000;
+    previewCanvas.height = 2000;
+    previewCanvas.style.backgroundColor = '#f8f8f8';
+    previewCanvas.style.objectFit = 'contain';
 
-            if (!title || !url) {
-                showToast('标题和网址不能为空!', 'error');
-                return;
-            }
-            if (!url.match(/^https?:\/\//)) {
-                showToast('网址格式不正确，必须以 http:// 或 https:// 开头。', 'error');
-                return;
-            }
+    // 7. 创建控制元素
+    const title = document.createElement('h2');
+    title.textContent = '文字模板生成器';
+    title.style.marginTop = '0';
+    title.style.color = '#333';
 
-            if (id) {
-                // 更新现有书签
-                const index = bookmarks.findIndex(b => b.id === id);
-                if (index > -1) {
-                    bookmarks[index] = {
-                        ...bookmarks[index],
-                        title,
-                        url,
-                        description,
-                        folderId
-                    };
-                    showToast('书签已更新', 'success');
+    const textarea = document.createElement('textarea');
+    textarea.style.width = '100%';
+    textarea.style.height = '200px';
+    textarea.style.margin = '15px 0';
+    textarea.style.padding = '10px';
+    textarea.style.border = '1px solid #ddd';
+    textarea.style.borderRadius = '4px';
+    textarea.style.fontFamily = '"Smiley Sans Oblique", sans-serif';
+    textarea.placeholder = '输入文字（回车换行）';
+
+    const generateBtn = document.createElement('button');
+    generateBtn.textContent = '下载图片 (3000×2000)';
+    generateBtn.style.width = '100%';
+    generateBtn.style.padding = '10px';
+    generateBtn.style.backgroundColor = '#1890ff';
+    generateBtn.style.color = '#fff';
+    generateBtn.style.border = 'none';
+    generateBtn.style.borderRadius = '4px';
+    generateBtn.style.cursor = 'pointer';
+    generateBtn.style.fontWeight = 'normal';
+
+    // 8. 组装UI
+    controlPanel.appendChild(title);
+    controlPanel.appendChild(textarea);
+    controlPanel.appendChild(generateBtn);
+    previewPanel.appendChild(previewCanvas);
+    mainContainer.appendChild(controlPanel);
+    mainContainer.appendChild(previewPanel);
+
+    // 9. 字体加载状态检测
+    let fontLoaded = false;
+    fontLoadedPromise.then((success) => {
+        fontLoaded = success;
+        console.log(success ? '自定义字体加载成功' : '使用备用字体');
+        renderPreview();
+    }).catch(err => {
+        console.error('字体加载错误:', err);
+        renderPreview();
+    });
+
+    // 10. 渲染函数
+    function renderPreview() {
+        const canvas = previewCanvas;
+        const ctx = canvas.getContext('2d');
+
+        // 清空画布
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 设置背景色
+        ctx.fillStyle = '#f8f8f8';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 计算文字区域
+        const textAreaWidth = canvas.width * (4/6);
+        const textAreaHeight = canvas.height * (3/4);
+        const startX = (canvas.width - textAreaWidth) / 2;
+        const startY = (canvas.height - textAreaHeight) / 2;
+
+        // 设置文字样式
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // 处理文字
+        const text = textarea.value;
+        if (!text) return;
+
+        const lines = text.split('\n').filter(line => line.trim());
+        if (lines.length === 0) return;
+
+        // 确定要使用的字体
+        const fontToUse = fontLoaded ? '"Smiley Sans Oblique"' : 'sans-serif';
+
+        // 初始字号计算 - 基于可用空间和行数
+        let fontSize = Math.min(
+            textAreaWidth / Math.max(...lines.map(line => line.length)) * 1.5, // 进一步增大放大系数
+            (textAreaHeight / lines.length) * 0.85 // 提高高度利用率
+        );
+
+        // 检查文字是否超出范围，自动调整字号
+        let textTooLarge = false;
+        let attempts = 0;
+        const maxAttempts = 20;
+
+        do {
+            textTooLarge = false;
+            ctx.font = `normal ${fontSize}px ${fontToUse}, sans-serif`;
+
+            // 检查每行文字宽度
+            for (const line of lines) {
+                const metrics = ctx.measureText(line);
+                if (metrics.width > textAreaWidth * 0.95) { // 进一步放宽宽度限制
+                    textTooLarge = true;
+                    fontSize *= 0.99; // 更精细的调整
+                    break;
                 }
-            } else {
-                // 添加新书签
-                const newBookmark = {
-                    id: generateId(),
-                    title,
-                    url,
-                    description,
-                    folderId,
-                    order: bookmarks.filter(b => b.folderId === folderId).length
-                };
-                bookmarks.push(newBookmark);
-                showToast('书签已添加', 'success');
-            }
-            
-            hideAllForms();
-            await saveAndRender();
-        }
-
-        async function saveFolder() {
-            const id = document.getElementById('folder-id').value;
-            const name = document.getElementById('folder-name').value.trim();
-            const parentId = document.getElementById('parent-folder').value;
-
-            if (!name) {
-                showToast('文件夹名称不能为空!', 'error');
-                return;
             }
 
-            if (id) {
-                // 更新现有文件夹
-                const index = folders.findIndex(f => f.id === id);
-                if (index > -1) {
-                    folders[index].name = name;
-                    folders[index].parentId = parentId;
-                    showToast('文件夹已更新', 'success');
-                }
-            } else {
-                // 添加新文件夹
-                const newFolder = {
-                    id: generateId(),
-                    name,
-                    parentId,
-                    expanded: false,
-                    order: folders.filter(f => f.parentId === parentId).length
-                };
-                folders.push(newFolder);
-                showToast('文件夹已创建', 'success');
+            // 检查总高度
+            const lineHeight = fontSize * 1.3;
+            const totalTextHeight = lines.length * lineHeight;
+            if (totalTextHeight > textAreaHeight * 0.95) { // 进一步放宽高度限制
+                textTooLarge = true;
+                fontSize *= 0.99;
             }
-            
-            hideAllForms();
-            await saveAndRender();
+
+            attempts++;
+        } while (textTooLarge && attempts < maxAttempts && fontSize > 10);
+
+        // 计算行高和垂直位置
+        const lineHeight = fontSize * 1.3;
+        const totalTextHeight = lines.length * lineHeight;
+        let y = startY + (textAreaHeight - totalTextHeight) / 2 + lineHeight/2;
+
+        // 绘制文字
+        ctx.font = `normal ${fontSize}px ${fontToUse}, sans-serif`;
+        for (const line of lines) {
+            ctx.fillText(line, canvas.width / 2, y);
+            y += lineHeight;
         }
 
-        function deleteFolder(folderId) {
-            const hasChildren = folders.some(f => f.parentId === folderId);
-            const hasBookmarks = bookmarks.some(b => b.folderId === folderId);
-            
-            if (hasChildren || hasBookmarks) {
-                showToast('请先移动或删除文件夹内的所有内容。', 'error');
-                return;
-            }
-            
-            if (confirm(`确定要删除这个文件夹吗？`)) {
-                folders = folders.filter(f => f.id !== folderId);
-                if (currentFolderId === folderId) currentFolderId = 'root';
-                saveAndRender();
-                showToast('文件夹已删除', 'success');
-            }
-        }
-        
-        async function moveToTrash(bookmarkId) {
-            const index = bookmarks.findIndex(bm => bm.id === bookmarkId);
-            if (index > -1) {
-                const [item] = bookmarks.splice(index, 1);
-                trash.unshift(item);
-                await saveAndRender();
-                showToast('书签已移至回收站', 'success');
-            }
-        }
-        
-        async function restoreFromTrash(id) {
-            const index = trash.findIndex(item => item.id === id);
-            if (index > -1) {
-                const [item] = trash.splice(index, 1);
-                
-                // 检查原文件夹是否存在
-                if (item.folderId !== 'root' && !folders.some(f => f.id === item.folderId)) {
-                    item.folderId = 'root';
-                    showToast('书签已恢复，但原始文件夹不存在，已移至根目录。', 'warning');
-                } else {
-                    showToast('书签已恢复', 'success');
-                }
-                
-                bookmarks.push(item);
-                await saveAndRender();
-            }
-        }
+        // 更新预览
+        const scale = Math.min(
+            previewPanel.clientWidth / canvas.width * 0.9,
+            previewPanel.clientHeight / canvas.height * 0.9
+        );
+        previewCanvas.style.transform = `scale(${scale})`;
+    }
 
-        async function deletePermanently(id) {
-            if (confirm('此操作将永久删除该书签，无法恢复。确定吗？')) {
-                trash = trash.filter(item => item.id !== id);
-                await saveAndRender();
-                showToast('书签已永久删除', 'success');
-            }
-        }
+    // 11. 添加事件监听
+    textarea.addEventListener('input', renderPreview);
+    generateBtn.addEventListener('click', function() {
+        // 生成时间戳文件名
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}${now.getSeconds().toString().padStart(2,'0')}`;
+        const filename = `文字模板_${timestamp}.png`;
 
-        // --- 拖放功能 ---
-        function onFolderDragStart(event, folderId) {
-            event.dataTransfer.setData('text/plain', folderId);
-            event.dataTransfer.effectAllowed = 'move';
-            draggedItem = { type: 'folder', id: folderId };
-            
-            // 添加拖动样式
-            setTimeout(() => {
-                event.target.closest('.folder-item').classList.add('dragging');
-            }, 0);
-        }
-        
-        function onFolderDragOver(event, folderId) {
-            event.preventDefault();
-            if (!draggedItem) return;
-            
-            const targetElement = event.target.closest('.folder-item');
-            if (!targetElement || targetElement.dataset.id === draggedItem.id) return;
-            
-            // 移除之前的高亮
-            document.querySelectorAll('.drop-target').forEach(el => {
-                el.classList.remove('drop-target');
-            });
-            
-            // 高亮当前目标
-            targetElement.classList.add('drop-target');
-            dragOverItem = { type: 'folder', id: folderId };
-        }
-        
-        function onFolderDragLeave(event, folderId) {
-            const relatedTarget = event.relatedTarget;
-            const currentTarget = event.currentTarget;
-            
-            // 如果鼠标没有离开当前元素，不清除高亮
-            if (relatedTarget && currentTarget.contains(relatedTarget)) {
-                return;
-            }
-            
-            event.currentTarget.classList.remove('drop-target');
-        }
-        
-        async function onFolderDrop(event, folderId) {
-            event.preventDefault();
-            if (!draggedItem) return;
-            
-            // 移除高亮
-            document.querySelectorAll('.drop-target').forEach(el => {
-                el.classList.remove('drop-target');
-            });
-            
-            // 移除拖动样式
-            document.querySelectorAll('.dragging').forEach(el => {
-                el.classList.remove('dragging');
-            });
-            
-            if (draggedItem.type === 'folder') {
-                await handleFolderDrop(draggedItem.id, folderId);
-            } else if (draggedItem.type === 'bookmark') {
-                await handleBookmarkDropToFolder(draggedItem.id, folderId);
-            }
-            
-            draggedItem = null;
-            dragOverItem = null;
-        }
+        // 下载图片
+        const link = document.createElement('a');
+        link.href = previewCanvas.toDataURL('image/png');
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-        function onBookmarkDragStart(event, bookmarkId) {
-            event.dataTransfer.setData('text/plain', bookmarkId);
-            event.dataTransfer.effectAllowed = 'move';
-            draggedItem = { type: 'bookmark', id: bookmarkId };
-            
-            setTimeout(() => {
-                event.target.closest('.bookmark-row').classList.add('dragging');
-            }, 0);
-        }
-        
-        function onBookmarkDragOver(event, bookmarkId) {
-            event.preventDefault();
-            if (!draggedItem || draggedItem.type !== 'bookmark') return;
-            
-            const targetRow = event.target.closest('.bookmark-row');
-            if (!targetRow || targetRow.dataset.id === draggedItem.id) return;
-            
-            // 移除之前的高亮
-            document.querySelectorAll('.drop-target').forEach(el => {
-                el.classList.remove('drop-target');
-            });
-            
-            // 高亮当前目标
-            targetRow.classList.add('drop-target');
-            dragOverItem = { type: 'bookmark', id: bookmarkId };
-        }
-        
-        function onBookmarkDragLeave(event, bookmarkId) {
-            const relatedTarget = event.relatedTarget;
-            const currentTarget = event.currentTarget;
-            
-            if (relatedTarget && currentTarget.contains(relatedTarget)) {
-                return;
-            }
-            
-            event.currentTarget.classList.remove('drop-target');
-        }
-        
-        async function onBookmarkDrop(event, bookmarkId) {
-            event.preventDefault();
-            if (!draggedItem || draggedItem.type !== 'bookmark') return;
-            
-            // 移除高亮
-            document.querySelectorAll('.drop-target').forEach(el => {
-                el.classList.remove('drop-target');
-            });
-            
-            // 移除拖动样式
-            document.querySelectorAll('.dragging').forEach(el => {
-                el.classList.remove('dragging');
-            });
-            
-            await handleBookmarkReorder(draggedItem.id, bookmarkId);
-            
-            draggedItem = null;
-            dragOverItem = null;
-        }
+        // 复制文件名到剪贴板
+        GM_setClipboard(filename, 'text').then(function() {
+            // 显示提示信息
+            const originalText = generateBtn.textContent;
+            generateBtn.textContent = '文件名已复制!';
+            generateBtn.style.backgroundColor = '#52c41a';
 
-        async function handleFolderDrop(draggedFolderId, targetFolderId) {
-            // 防止将文件夹拖到自己或子文件夹中
-            if (draggedFolderId === targetFolderId) {
-                return;
-            }
-            
-            // 检查目标文件夹是否是拖动文件夹的子文件夹
-            const isDescendant = (folderId, parentId) => {
-                const children = folders.filter(f => f.parentId === parentId);
-                for (const child of children) {
-                    if (child.id === folderId) return true;
-                    if (isDescendant(folderId, child.id)) return true;
-                }
-                return false;
-            };
-            
-            if (isDescendant(targetFolderId, draggedFolderId)) {
-                showToast('不能将文件夹拖到其子文件夹中', 'error');
-                return;
-            }
-            
-            // 更新文件夹的父文件夹
-            const folderIndex = folders.findIndex(f => f.id === draggedFolderId);
-            if (folderIndex > -1) {
-                folders[folderIndex].parentId = targetFolderId;
-                
-                // 更新排序
-                const siblings = folders.filter(f => f.parentId === targetFolderId);
-                folders[folderIndex].order = siblings.length;
-                
-                await saveAndRender();
-                showToast('文件夹已移动', 'success');
-            }
-        }
-
-        async function handleBookmarkDropToFolder(bookmarkId, targetFolderId) {
-            const bookmarkIndex = bookmarks.findIndex(b => b.id === bookmarkId);
-            if (bookmarkIndex > -1) {
-                bookmarks[bookmarkIndex].folderId = targetFolderId;
-                
-                // 在新文件夹中重新排序
-                const folderBookmarks = bookmarks.filter(b => b.folderId === targetFolderId);
-                bookmarks[bookmarkIndex].order = folderBookmarks.length;
-                
-                await saveAndRender();
-                showToast('书签已移动', 'success');
-            }
-        }
-
-        async function handleBookmarkReorder(draggedId, targetId) {
-            if (draggedId === targetId) return;
-            
-            const draggedIndex = bookmarks.findIndex(b => b.id === draggedId);
-            const targetIndex = bookmarks.findIndex(b => b.id === targetId);
-            
-            if (draggedIndex === -1 || targetIndex === -1) return;
-            
-            const draggedBookmark = bookmarks[draggedIndex];
-            const targetBookmark = bookmarks[targetIndex];
-            
-            // 确保两个书签在同一个文件夹中
-            if (draggedBookmark.folderId !== targetBookmark.folderId) {
-                showToast('只能在同一个文件夹内重新排序', 'error');
-                return;
-            }
-            
-            // 重新排序
-            bookmarks.splice(draggedIndex, 1);
-            bookmarks.splice(targetIndex, 0, draggedBookmark);
-            
-            // 更新所有书签的排序值
-            const folderBookmarks = bookmarks.filter(b => b.folderId === draggedBookmark.folderId);
-            folderBookmarks.forEach((bookmark, index) => {
-                bookmark.order = index;
-            });
-            
-            await saveAndRender();
-            showToast('书签顺序已更新', 'success');
-        }
-
-        // --- 认证 & 初始化 ---
-        async function handleLogin() {
-            const password = passwordInput.value;
-            if (!password) {
-                authError.textContent = '密码不能为空。';
-                return;
-            }
-            
-            encryptionKey = password;
-            const content = await fetchGist();
-            if (content === null) return;
-
-            if (content === '{}') {
-                if (confirm('未找到数据。是否使用当前密码创建新的加密书签库?')) {
-                    folders = [];
-                    bookmarks = [];
-                    trash = [];
-                    await updateGist();
-                    showAppView();
-                }
-            } else {
-                const decrypted = decrypt(content, encryptionKey);
-                if (!decrypted) {
-                    authError.textContent = '密码错误或数据已损坏。';
-                    encryptionKey = null;
-                    return;
-                }
-                
-                const data = JSON.parse(decrypted);
-                folders = data.folders || [];
-                bookmarks = data.bookmarks || [];
-                trash = data.trash || [];
-                
-                // 确保所有项目都有排序值
-                folders.forEach(folder => {
-                    if (folder.order === undefined) folder.order = 0;
-                });
-                bookmarks.forEach(bookmark => {
-                    if (bookmark.order === undefined) bookmark.order = 0;
-                    // 确保description字段存在（兼容旧数据）
-                    if (bookmark.description === undefined) bookmark.description = '';
-                });
-                
-                showAppView();
-                showToast('解锁成功', 'success');
-            }
-        }
-
-        function handleLogout() {
-            encryptionKey = null;
-            folders = [];
-            bookmarks = [];
-            trash = [];
-            showAuthView();
-            showToast('已锁定', 'info');
-        }
-
-        function showAppView() {
-            authContainer.classList.add('hidden');
-            appContainer.classList.remove('hidden');
-            renderApp();
-        }
-
-        function showAuthView() {
-            appContainer.classList.add('hidden');
-            authContainer.classList.remove('hidden');
-            passwordInput.value = '';
-            authError.textContent = '';
-        }
-        
-        function hideAllForms() {
-            bookmarkFormContainer.classList.remove('active');
-            folderFormContainer.classList.remove('active');
-        }
-        
-        function toggleLoader(loader, show) {
-            loader.classList.toggle('hidden', !show);
-        }
-        
-        function showToast(message, type = 'info', duration = 3000) {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            const icons = {
-                'error': 'fa-exclamation-circle',
-                'success': 'fa-check-circle',
-                'warning': 'fa-exclamation-triangle',
-                'info': 'fa-info-circle'
-            };
-            
-            toast.innerHTML = `
-                <i class="fas ${icons[type]} toast-icon"></i>
-                <div class="toast-message">${message}</div>
-            `;
-            
-            toastContainer.appendChild(toast);
-            
-            setTimeout(() => toast.classList.add('show'), 10);
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-                toast.style.animation = 'fadeOut 0.3s forwards';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
-        }
-
-        // --- 事件监听器 ---
-        loginBtn.addEventListener('click', handleLogin);
-        passwordInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') handleLogin();
+            // 3秒后恢复原状
+            setTimeout(function() {
+                generateBtn.textContent = originalText;
+                generateBtn.style.backgroundColor = '#1890ff';
+            }, 3000);
+        }).catch(function(err) {
+            console.error('复制失败:', err);
         });
-        
-        logoutBtn.addEventListener('click', handleLogout);
-        addBookmarkBtn.addEventListener('click', openAddBookmarkForm);
-        addFolderBtn.addEventListener('click', openAddFolderForm);
-        
-        document.getElementById('save-bookmark-form').addEventListener('click', saveBookmark);
-        document.getElementById('cancel-bookmark-form').addEventListener('click', hideAllForms);
-        document.getElementById('save-folder-form').addEventListener('click', saveFolder);
-        document.getElementById('cancel-folder-form').addEventListener('click', hideAllForms);
+    });
 
-        openAllBtn.addEventListener('click', () => {
-            const bookmarksToOpen = bookmarks.filter(bm => bm.folderId === currentFolderId);
-            if (bookmarksToOpen.length === 0) {
-                showToast('当前文件夹没有书签可以打开。', 'warning');
-                return;
-            }
-            
-            if (bookmarksToOpen.length > 5 && !confirm(`即将打开 ${bookmarksToOpen.length} 个标签页，确定吗？`)) {
-                return;
-            }
-            
-            bookmarksToOpen.forEach(bm => window.open(bm.url, '_blank'));
-        });
+    // 12. 初始渲染
+    renderPreview();
 
-        // 全局函数，用于HTML内联事件
-        window.selectFolder = selectFolder;
-        window.openFolder = openFolder;
-        window.toggleFolderExpand = toggleFolderExpand;
-        window.deleteFolder = deleteFolder;
-        window.openEditFolderForm = openEditFolderForm;
-        window.openBookmark = openBookmark;
-        window.openEditBookmarkForm = openEditBookmarkForm;
-        window.moveToTrash = moveToTrash;
-        window.restoreFromTrash = restoreFromTrash;
-        window.deletePermanently = deletePermanently;
-        window.onFolderDragStart = onFolderDragStart;
-        window.onFolderDragOver = onFolderDragOver;
-        window.onFolderDragLeave = onFolderDragLeave;
-        window.onFolderDrop = onFolderDrop;
-        window.onBookmarkDragStart = onBookmarkDragStart;
-        window.onBookmarkDragOver = onBookmarkDragOver;
-        window.onBookmarkDragLeave = onBookmarkDragLeave;
-        window.onBookmarkDrop = onBookmarkDrop;
-
-        // 初始显示认证界面
-        showAuthView();
-    </script>
+    // 13. 响应式调整
+    window.addEventListener('resize', function() {
+        renderPreview();
+    });
+  </script>
 </body>
+
 </html>
