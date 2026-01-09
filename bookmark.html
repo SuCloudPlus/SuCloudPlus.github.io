@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
     <html lang="zh-CN">
         <head>
@@ -962,8 +963,8 @@ select {
 </div>
 
 <script>
-    // ==================== 用户加密配置 ====================
-    const ENCRYPTED_CONFIG = "U2FsdGVkX1/+9M0exfpQf2cAGgMdsioLFhK7ISZr8xzCX18YjGlYtPjyZUQTSrq19pkA1ZyumW3gs+Wx0db3utXhMOL7zwA2yA23TMpFf4jk0OnE2H2TJAn3TfgaW4s9OAi+ob5yVVrgwnyrAQ/hq6ihTOhhwH6iYgSCmne5PRSjOdbdRd0t0RzxlHTxerORQiekEwYgu3si7gEaUMBoLhfcI5xOIYXjorq8SEQhPDzrqWAy7GnFV7K3shml8Xf5rGgS8cYVGqM5NdYp2jdN1sV/lmTjNa2ldc7qLNFXn4jY8gk5EGjgMRAV+GKajvEk";
+// ==================== 用户加密配置 ====================
+const ENCRYPTED_CONFIG = "U2FsdGVkX1/Q77LOAksNf7bj2ljy4ZkipnAmbOZvCiwUy8S4aSAMy3gI9UB6Q8l0ov5qp8tQvbcmotuaByiL6Y9kF8dhdUBXU7o6r/NfOacU/ih3FObAlt0AcRVejbfOu3zpadhy/HIyDbZtXlol6NtwpIAAF/8Y8V8VgnYqnifS3kcqEhkaTta5zDw4r9VKATCnlKFmk8Dq6vIR+hYbprh3dHZsGWCU7XcbEVyl/KyT/JgQPl3NY6rew62/AkXArkhcDlIrVVFrfMGcMZgwGBbYHJKJhO+upo+5AMkLDrJFWsDmICTwQ3Jst4Da7o5U";
 
 // ==================== DOM元素 ====================
 const authContainer = document.getElementById('auth-container');
@@ -1092,15 +1093,16 @@ function closeSidebar() {
 }
 
 // ==================== API操作 ====================
-/** 从Gist获取数据 */
-async function fetchGist() {
-    toggleLoader(authLoader, true);
-    authError.textContent = '';
+/** 使用动态配置获取Gist数据 */
+async function fetchGistWithConfig(gistUrl, githubToken) {
     try {
-        const response = await fetch(GIST_URL, {
-            headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+        const response = await fetch(gistUrl, {
+            headers: { 'Authorization': `token ${githubToken}` }
         });
-        if (!response.ok) throw new Error(`GitHub API错误: ${response.statusText}`);
+        if (!response.ok) {
+            console.error('GitHub API错误:', response.status, response.statusText);
+            throw new Error(`GitHub API错误: ${response.statusText}`);
+        }
         const gist = await response.json();
         if (!gist.files || !gist.files['bookmarks.json']) {
             showToast('Gist中未找到数据文件', 'warning');
@@ -1109,41 +1111,68 @@ async function fetchGist() {
         return gist.files['bookmarks.json'].content;
     } catch (error) {
         console.error('获取数据失败:', error);
-        showToast('获取数据失败，请检查配置', 'error');
+        showToast('获取数据失败，请检查配置和网络', 'error');
         return null;
-    } finally {
-        toggleLoader(authLoader, false);
     }
 }
 
-/** 更新Gist数据 */
-async function updateGist() {
-    if (isSaving) return false;
+/** 使用动态配置更新Gist */
+async function updateGistWithConfig(gistUrl, githubToken) {
+    if (isSaving) {
+        console.log('正在保存中，跳过重复请求');
+        return false;
+    }
+    
     isSaving = true;
-
+    
     try {
         const data = {
             folders: folders.map(f => ({ ...f, order: f.order || 0 })),
-            bookmarks: bookmarks.map(b => ({ ...b, order: b.order || 0, description: b.description || '' })),
+            bookmarks: bookmarks.map(b => ({ 
+                ...b, 
+                order: b.order || 0, 
+                description: b.description || '' 
+            })),
             trash
         };
+        
+        console.log('准备保存数据到:', gistUrl);
+        console.log('数据条数 - 文件夹:', folders.length, '书签:', bookmarks.length);
+        
         const encryptedData = encrypt(JSON.stringify(data), encryptionKey);
-
-        const response = await fetch(GIST_URL, {
+        
+        const response = await fetch(gistUrl, {
             method: 'PATCH',
             headers: {
-                'Authorization': `token ${GITHUB_TOKEN}`,
-                'Content-Type': 'application/json'
+                'Authorization': `token ${githubToken}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.github.v3+json'
             },
             body: JSON.stringify({
-                files: { 'bookmarks.json': { content: encryptedData } }
+                description: "加密书签管理器数据",
+                files: { 
+                    'bookmarks.json': { 
+                        content: encryptedData 
+                    } 
+                }
             })
         });
-        if (!response.ok) throw new Error('更新失败');
+        
+        console.log('保存响应状态:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('保存失败响应:', errorText);
+            throw new Error(`更新失败: ${response.status} ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('保存成功:', result.id);
         return true;
+        
     } catch (error) {
-        console.error('保存失败:', error);
-        showToast('保存失败，请检查网络', 'error');
+        console.error('保存失败详情:', error);
+        showToast(`保存失败: ${error.message}`, 'error');
         return false;
     } finally {
         isSaving = false;
@@ -1154,10 +1183,31 @@ async function updateGist() {
 /** 保存并刷新界面 */
 async function saveAndRender() {
     renderApp();
-    updateGist().catch(error => {
-        console.error('异步保存失败:', error);
-        showToast('同步到云端失败', 'warning');
-    });
+    
+    // 检查是否有当前的Gist配置
+    if (window.currentGistConfig && encryptionKey) {
+        try {
+            const success = await updateGistWithConfig(
+                window.currentGistConfig.url,
+                window.currentGistConfig.token
+            );
+            
+            if (success) {
+                // 可以添加一个简短的成功提示，但不要太频繁
+                console.log('数据保存成功');
+            } else {
+                console.log('保存失败，但没有抛出异常');
+            }
+        } catch (error) {
+            console.error('保存失败:', error);
+            // 不要每次都显示错误提示，避免干扰用户体验
+            // 只在用户操作时显示特定错误
+        }
+    } else {
+        console.error('无法保存：缺少配置或加密密钥');
+        console.log('currentGistConfig:', window.currentGistConfig);
+        console.log('encryptionKey:', encryptionKey ? '已设置' : '未设置');
+    }
 }
 
 /** 构建文件夹路径映射 */
@@ -1551,33 +1601,63 @@ async function saveBookmark() {
         return;
     }
     if (!url.match(/^https?:\/\//)) {
-        showToast('网址格式不正确', 'error');
+        showToast('网址格式不正确，必须以http://或https://开头', 'error');
         return;
     }
 
-    if (id) {
-        // 更新现有书签
-        const index = bookmarks.findIndex(b => b.id === id);
-        if (index > -1) {
-            bookmarks[index] = { ...bookmarks[index], title, url, description, folderId };
-            showToast('书签已更新', 'success');
+    let operation = '';
+    try {
+        if (id) {
+            // 更新现有书签
+            const index = bookmarks.findIndex(b => b.id === id);
+            if (index > -1) {
+                bookmarks[index] = { ...bookmarks[index], title, url, description, folderId };
+                operation = '更新';
+            }
+        } else {
+            // 添加新书签
+            const newBookmark = {
+                id: generateId(),
+                title,
+                url,
+                description,
+                folderId,
+                order: bookmarks.filter(b => b.folderId === folderId).length
+            };
+            bookmarks.push(newBookmark);
+            operation = '添加';
         }
-    } else {
-        // 添加新书签
-        const newBookmark = {
-            id: generateId(),
-            title,
-            url,
-            description,
-            folderId,
-            order: bookmarks.filter(b => b.folderId === folderId).length
-        };
-        bookmarks.push(newBookmark);
-        showToast('书签已添加', 'success');
+        
+        hideAllForms();
+        
+        // 先更新本地UI
+        renderApp();
+        
+        // 然后尝试保存到云端
+        if (window.currentGistConfig && encryptionKey) {
+            try {
+                const success = await updateGistWithConfig(
+                    window.currentGistConfig.url,
+                    window.currentGistConfig.token
+                );
+                
+                if (success) {
+                    showToast(`书签已${operation}并保存到云端`, 'success');
+                }
+                // 如果失败，updateGistWithConfig 已经显示了错误信息
+            } catch (saveError) {
+                // 本地已更新，但云端保存失败
+                showToast(`书签已${operation}（本地），云端保存失败：${saveError.message}`, 'warning');
+            }
+        } else {
+            // 只更新本地
+            showToast(`书签已${operation}（仅本地）`, 'success');
+        }
+        
+    } catch (error) {
+        console.error(`书签${operation}失败:`, error);
+        showToast(`书签${operation}失败: ${error.message}`, 'error');
     }
-
-    hideAllForms();
-    await saveAndRender();
 }
 
 /** 保存文件夹 */
@@ -1921,6 +2001,30 @@ async function handleLogin() {
         const GITHUB_TOKEN = decryptedConfig.githubToken;
         const GIST_URL = `https://api.github.com/gists/${GIST_ID}`;
 
+        // 在登录成功后，设置一个全局变量来保存当前配置
+        window.currentGistConfig = {
+            url: GIST_URL,
+            token: GITHUB_TOKEN
+        };
+
+        // 测试 Token 权限
+        console.log('测试 Token 权限...');
+        try {
+            const testResponse = await fetch('https://api.github.com/user', {
+                headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+            });
+            
+            if (!testResponse.ok) {
+                console.error('Token 权限测试失败:', testResponse.status, testResponse.statusText);
+                showToast('GitHub Token 权限验证失败', 'warning');
+            } else {
+                const userData = await testResponse.json();
+                console.log('Token 权限正常，用户:', userData.login);
+            }
+        } catch (tokenError) {
+            console.error('Token 测试错误:', tokenError);
+        }
+
         // 获取Gist数据
         toggleLoader(authLoader, true);
         const content = await fetchGistWithConfig(GIST_URL, GITHUB_TOKEN);
@@ -1939,9 +2043,13 @@ async function handleLogin() {
                 folders = [];
                 bookmarks = [];
                 trash = [];
-                await updateGistWithConfig(GIST_URL, GITHUB_TOKEN);
-                showAppView();
-                showToast('新书签库创建成功', 'success');
+                const saveSuccess = await updateGistWithConfig(GIST_URL, GITHUB_TOKEN);
+                if (saveSuccess) {
+                    showAppView();
+                    showToast('新书签库创建成功', 'success');
+                } else {
+                    showToast('创建失败，请检查Token权限', 'error');
+                }
             }
         } else {
             // 解密Gist数据
@@ -1977,54 +2085,76 @@ async function handleLogin() {
         showToast('登录失败', 'error');
     }
 }
-/** 使用动态配置获取Gist数据 */
-async function fetchGistWithConfig(gistUrl, githubToken) {
-    try {
-        const response = await fetch(gistUrl, {
-            headers: { 'Authorization': `token ${githubToken}` }
-        });
-        if (!response.ok) throw new Error(`GitHub API错误: ${response.statusText}`);
-        const gist = await response.json();
-        if (!gist.files || !gist.files['bookmarks.json']) {
-            showToast('Gist中未找到数据文件', 'warning');
-            return '{}';
-        }
-        return gist.files['bookmarks.json'].content;
-    } catch (error) {
-        console.error('获取数据失败:', error);
-        showToast('获取数据失败，请检查配置', 'error');
-        return null;
-    }
-}
 
 /** 使用动态配置更新Gist */
 async function updateGistWithConfig(gistUrl, githubToken) {
-    if (isSaving) return false;
+    if (isSaving) {
+        console.log('正在保存中，跳过重复请求');
+        return false;
+    }
+    
     isSaving = true;
-
+    
     try {
         const data = {
             folders: folders.map(f => ({ ...f, order: f.order || 0 })),
-            bookmarks: bookmarks.map(b => ({ ...b, order: b.order || 0, description: b.description || '' })),
+            bookmarks: bookmarks.map(b => ({ 
+                ...b, 
+                order: b.order || 0, 
+                description: b.description || '' 
+            })),
             trash
         };
+        
+        console.log('准备保存数据到:', gistUrl);
+        console.log('Token 前几位:', githubToken.substring(0, 20) + '...');
+        console.log('数据条数 - 文件夹:', folders.length, '书签:', bookmarks.length);
+        
         const encryptedData = encrypt(JSON.stringify(data), encryptionKey);
-
+        
         const response = await fetch(gistUrl, {
             method: 'PATCH',
             headers: {
                 'Authorization': `token ${githubToken}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'Encrypted-Bookmark-Manager/1.0'
             },
             body: JSON.stringify({
-                files: { 'bookmarks.json': { content: encryptedData } }
+                description: "加密书签管理器数据",
+                files: { 
+                    'bookmarks.json': { 
+                        content: encryptedData 
+                    } 
+                }
             })
         });
-        if (!response.ok) throw new Error('更新失败');
+        
+        console.log('保存响应状态:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('保存失败详细响应:', errorText);
+            
+            // 根据不同的错误状态提供不同的提示
+            if (response.status === 403) {
+                throw new Error('403 权限被拒绝：请检查GitHub Token是否有gist权限，或Token是否已过期');
+            } else if (response.status === 401) {
+                throw new Error('401 认证失败：GitHub Token无效或已过期');
+            } else if (response.status === 404) {
+                throw new Error('404 Gist不存在：请检查Gist ID是否正确');
+            } else {
+                throw new Error(`更新失败: ${response.status} ${response.statusText}`);
+            }
+        }
+        
+        const result = await response.json();
+        console.log('保存成功，Gist ID:', result.id);
         return true;
+        
     } catch (error) {
-        console.error('保存失败:', error);
-        showToast('保存失败，请检查网络和Token权限', 'error');
+        console.error('保存失败详情:', error);
+        showToast(`保存失败: ${error.message}`, 'error');
         return false;
     } finally {
         isSaving = false;
