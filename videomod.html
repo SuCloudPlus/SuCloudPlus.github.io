@@ -17,7 +17,8 @@
                 radius: 5, // 圆角半径
                 scale: 300, // 高度缩放
                 margin: 0, 
-                roundBottom: false
+                roundBottom: false,
+                baseHeight: 10 // 新增：默认高度（频谱值为0时的基础高度）
             },
             ripple: {
                 color: '#4db6ff', 
@@ -204,6 +205,11 @@
             <div class="row" data-sync="bar-scale">
                 <label>高度缩放</label>
                 <input type="range" min="10" max="1000" step="10">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="bar-base">
+                <label>默认高度</label>
+                <input type="range" min="0" max="200" step="1">
                 <input type="number">
             </div>
             <div class="row" data-sync="bar-width">
@@ -410,6 +416,7 @@ const Viz = (function() {
         // 绑定所有参数
         bindNum('bar-opacity', S.cfg.bar, 'opacity');
         bindNum('bar-scale', S.cfg.bar, 'scale');
+        bindNum('bar-base', S.cfg.bar, 'baseHeight'); // 新增：默认高度
         bindNum('bar-width', S.cfg.bar, 'width');
         bindNum('bar-margin', S.cfg.bar, 'margin');
         bindNum('bar-radius', S.cfg.bar, 'radius');
@@ -594,16 +601,20 @@ const Viz = (function() {
         
         // Helper
         const dRect = (val, i, isTop) => {
-            const hScale = (val / 255) * c.scale;
-            if(hScale < 1) return;
+            // 新增：包含基础高度和音量缩放高度
+            const baseH = c.baseHeight; // 基础高度
+            const scaledH = (val / 255) * c.scale; // 音量缩放高度
+            const totalHeight = baseH + scaledH; // 总高度 = 基础高度 + 音量缩放高度
+            
+            if(totalHeight < 1) return; // 如果总高度小于1像素，不绘制
+            
             const cx = segment * (i + 1);
             const x = cx - c.width/2;
-            const y = isTop ? c.margin : h - hScale - c.margin;
+            const y = isTop ? c.margin : h - totalHeight - c.margin;
             
             // 绘制圆角
             S.ctx.beginPath();
-            // 简化版圆角逻辑
-            S.ctx.roundRect(x, y, c.width, hScale, c.radius);
+            S.ctx.roundRect(x, y, c.width, totalHeight, c.radius);
             S.ctx.fill();
         };
 
@@ -788,4 +799,3 @@ window.onload = Viz.init;
 </script>
 </body>
 </html>
-
