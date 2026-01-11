@@ -10,8 +10,14 @@
         const APP_CONFIG = {
             fftSize: 2048,
             bar: {
-                color: '#7cff4d', count: 64, opacity: 1.0, width: 10, 
-                radius: 5, scale: 300, margin: 0, roundBottom: false
+                color: '#7cff4d', 
+                count: 64, // 频谱数量
+                opacity: 1.0, // 不透明度
+                width: 10, //柱子宽度
+                radius: 5, // 圆角半径
+                scale: 300, // 高度缩放
+                margin: 0, 
+                roundBottom: false
             },
             ripple: {
                 color: '#4db6ff', 
@@ -190,10 +196,10 @@
                 <input type="color" id="bar-color" value="#7cff4d">
                 <input type="text" id="bar-color-hex" value="#7cff4d" style="width:55px; border:none; background:none; color:#aaa; font-size:11px;">
             </div>
-            <div class="row" data-sync="bar-opacity">
-                <label>不透明度</label>
-                <input type="range" min="0" max="1" step="0.01">
-                <input type="number" step="0.1">
+            <div class="row" data-sync="bar-count">
+                <label>频谱数量</label>
+                <input type="range" min="1" max="999" step="1">
+                <input type="number">
             </div>
             <div class="row" data-sync="bar-scale">
                 <label>高度缩放</label>
@@ -201,7 +207,7 @@
                 <input type="number">
             </div>
             <div class="row" data-sync="bar-width">
-                <label>柱子宽度</label>
+                <label>频谱宽度</label>
                 <input type="range" min="1" max="100">
                 <input type="number">
             </div>
@@ -215,23 +221,30 @@
                 <input type="range" min="0" max="50">
                 <input type="number">
             </div>
+            <div class="row" data-sync="bar-opacity">
+                <label>不透明度</label>
+                <input type="range" min="0" max="1" step="0.01">
+                <input type="number" step="0.1">
+            </div>
             
             <label style="font-size:12px; color:#bbb; margin-top:8px; display:block;">翻转设置</label>
             <div class="flip-group">
                 <div class="flip-control" id="ctrl-top">
                     <div class="flip-btn" data-val="false" title="正序">
-                        <svg viewBox="0 0 24 24"><path d="M4 22h16v-2H4v2zm2-4h3V4h-3v14zm4 0h3V8h-3v10zm4 0h3v-6h-3v6z"/></svg>
+<svg viewBox="0 0 24 24"><path d="M4 2h16v2H4V2zm2 4h3v14h-3V6zm4 0h3v10h-3V6zm4 0h3v6h-3V6z"/></svg>
                     </div>
-                    <div class="flip-btn active" data-val="true" title="倒序 (翻转)">
-                        <svg viewBox="0 0 24 24"><path d="M4 22h16v-2H4v2zm5-4v-6h-3v6h3zm4 0v-10h-3v10h3zm4 0V4h-3v14h3z"/></svg>
-                    </div>
+                    <div class="flip-btn active" data-val="true" title="倒序 (水平翻转)">
+                        <svg viewBox="0 0 24 24"><path d="M4 2h16v2H4V2zm5 4v6h-3V6h3zm4 0v10h-3V6h3zm4 0v14h-3V6h3z"/></svg>
+                     </div>
                 </div>
+            </div>
+            <div class="flip-group">
                 <div class="flip-control" id="ctrl-bot">
                     <div class="flip-btn active" data-val="false" title="正序">
-                        <svg viewBox="0 0 24 24"><path d="M4 2h16v2H4V2zm2 4h3v14h-3V6zm4 0h3v10h-3V6zm4 0h3v6h-3V6z"/></svg>
+<svg viewBox="0 0 24 24"><path d="M4 22h16v-2H4v2zm2-4h3V4h-3v14zm4 0h3V8h-3v10zm4 0h3v-6h-3v6z"/></svg>
                     </div>
-                    <div class="flip-btn" data-val="true" title="倒序 (翻转)">
-                        <svg viewBox="0 0 24 24"><path d="M4 2h16v2H4V2zm5 4v6h-3V6h3zm4 0v10h-3V6h3zm4 0v14h-3V6h3z"/></svg>
+                    <div class="flip-btn" data-val="true" title="倒序 (水平翻转)">
+                        <svg viewBox="0 0 24 24"><path d="M4 22h16v-2H4v2zm5-4v-6h-3v6h3zm4 0v-10h-3v10h3zm4 0V4h-3v14h3z"/></svg>
                     </div>
                 </div>
             </div>
@@ -400,6 +413,8 @@ const Viz = (function() {
         bindNum('bar-width', S.cfg.bar, 'width');
         bindNum('bar-margin', S.cfg.bar, 'margin');
         bindNum('bar-radius', S.cfg.bar, 'radius');
+        bindNum('bar-count', S.cfg.bar, 'count');
+
         
         bindNum('rip-count', S.cfg.ripple, 'count', 'int');
         bindNum('rip-spacing', S.cfg.ripple, 'spacing');
