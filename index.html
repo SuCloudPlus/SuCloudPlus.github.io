@@ -38,7 +38,70 @@
         ]
     }
     </script>
-    
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>@顾尘苏 在线工具索引</h1>
+            <p class="description">常用工具和资源的快捷链接，点击即可访问</p>
+        </header>
+        
+        <main>
+            <div id="links-container" class="links-grid">
+                <!-- 链接将通过JavaScript动态生成 -->
+            </div>
+        </main>
+        
+        <footer>
+            <p>© <span id="current-year"></span> 工具集合页 | @顾尘苏 | 共 <span id="links-count">0</span> 个链接</p>
+        </footer>
+    </div>
+
+    <script>
+        // 从配置中读取链接数据
+        const configElement = document.getElementById('links-config');
+        const linksData = JSON.parse(configElement.textContent);
+        
+        // 获取容器元素
+        const linksContainer = document.getElementById('links-container');
+        const linksCountElement = document.getElementById('links-count');
+        const currentYearElement = document.getElementById('current-year');
+        
+        // 设置当前年份
+        currentYearElement.textContent = new Date().getFullYear();
+        
+        // 生成链接卡片
+        function generateLinkCards() {
+            let html = '';
+            
+            linksData.links.forEach(link => {
+                html += `
+                    <a href="${link.url}" target="_blank" class="link-item">
+                        <div class="link-title">${link.title}</div>
+                        <div class="link-description">${link.description}</div>
+                        <div class="link-url">${link.url}</div>
+                    </a>
+                `;
+            });
+            
+            linksContainer.innerHTML = html;
+            linksCountElement.textContent = linksData.links.length;
+        }
+        
+        // 页面加载时生成链接
+        document.addEventListener('DOMContentLoaded', generateLinkCards);
+        
+        // 添加键盘快捷键支持
+        document.addEventListener('keydown', (e) => {
+            // Alt+1 到 Alt+9 快速访问前9个链接
+            if (e.altKey && e.key >= '1' && e.key <= '9') {
+                const index = parseInt(e.key) - 1;
+                if (index < linksData.links.length) {
+                    window.open(linksData.links[index].url, '_blank');
+                }
+            }
+        });
+    </script>
     <style>
         * {
             margin: 0;
@@ -195,69 +258,5 @@
             }
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>@顾尘苏 在线工具索引</h1>
-            <p class="description">常用工具和资源的快捷链接，点击即可访问</p>
-        </header>
-        
-        <main>
-            <div id="links-container" class="links-grid">
-                <!-- 链接将通过JavaScript动态生成 -->
-            </div>
-        </main>
-        
-        <footer>
-            <p>© <span id="current-year"></span> 工具集合页 | @顾尘苏 | 共 <span id="links-count">0</span> 个链接</p>
-        </footer>
-    </div>
-
-    <script>
-        // 从配置中读取链接数据
-        const configElement = document.getElementById('links-config');
-        const linksData = JSON.parse(configElement.textContent);
-        
-        // 获取容器元素
-        const linksContainer = document.getElementById('links-container');
-        const linksCountElement = document.getElementById('links-count');
-        const currentYearElement = document.getElementById('current-year');
-        
-        // 设置当前年份
-        currentYearElement.textContent = new Date().getFullYear();
-        
-        // 生成链接卡片
-        function generateLinkCards() {
-            let html = '';
-            
-            linksData.links.forEach(link => {
-                html += `
-                    <a href="${link.url}" target="_blank" class="link-item">
-                        <div class="link-title">${link.title}</div>
-                        <div class="link-description">${link.description}</div>
-                        <div class="link-url">${link.url}</div>
-                    </a>
-                `;
-            });
-            
-            linksContainer.innerHTML = html;
-            linksCountElement.textContent = linksData.links.length;
-        }
-        
-        // 页面加载时生成链接
-        document.addEventListener('DOMContentLoaded', generateLinkCards);
-        
-        // 添加键盘快捷键支持
-        document.addEventListener('keydown', (e) => {
-            // Alt+1 到 Alt+9 快速访问前9个链接
-            if (e.altKey && e.key >= '1' && e.key <= '9') {
-                const index = parseInt(e.key) - 1;
-                if (index < linksData.links.length) {
-                    window.open(linksData.links[index].url, '_blank');
-                }
-            }
-        });
-    </script>
 </body>
 </html>
