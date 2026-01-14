@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>带行号的文本编辑器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(to right, #4a6fa5, #6a93cb);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+        
+        .editor-container {
+            display: flex;
+            height: 500px;
+            border-top: 1px solid #eaeaea;
+        }
+        
+        .line-numbers {
+            width: 60px;
+            background-color: #f8f9fa;
+            padding: 15px 10px;
+            text-align: right;
+            overflow-y: hidden;
+            border-right: 1px solid #e0e0e0;
+            color: #6c757d;
+            font-size: 15px;
+            font-family: 'Courier New', monospace;
+            line-height: 1.6;
+            user-select: none;
+        }
+        
+        .line-number {
+            height: 24px;
+            padding-right: 8px;
+        }
+        
+        .text-input-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #text-input {
+            width: 100%;
+            height: 100%;
+            padding: 15px;
+            border: none;
+            outline: none;
+            resize: none;
+            font-size: 15px;
+            line-height: 1.6;
+            font-family: 'Courier New', monospace;
+            color: #333;
+            background-color: white;
+        }
+        
+        #text-input:focus {
+            box-shadow: inset 0 0 0 1px #6a93cb;
+        }
+        
+        .footer {
+            padding: 15px 30px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #eaeaea;
+            font-size: 0.9rem;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: #4a6fa5;
+        }
+        
+        @media (max-width: 768px) {
+            .editor-container {
+                height: 400px;
+            }
+            
+            .header {
+                padding: 15px 20px;
+            }
+            
+            .footer {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .stats {
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>带行号的文本编辑器</h1>
+            <p>在右侧文本框中输入，左侧会自动显示行号</p>
+        </div>
+        
+        <div class="editor-container">
+            <div class="line-numbers" id="line-numbers">
+                <div class="line-number">1</div>
+            </div>
+            <div class="text-input-container">
+                <textarea id="text-input" placeholder="开始输入文本..."></textarea>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">行数:</span>
+                    <span class="stat-value" id="line-count">1</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">字符数:</span>
+                    <span class="stat-value" id="char-count">0</span>
+                </div>
+            </div>
+            <div class="hint">行号与文本框会同步滚动</div>
+        </div>
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const textInput = document.getElementById('text-input');
+        const lineNumbers = document.getElementById('line-numbers');
+        const lineCountEl = document.getElementById('line-count');
+        const charCountEl = document.getElementById('char-count');
+        
+        // 更新行号函数
+        function updateLineNumbers() {
+            const text = textInput.value;
+            const lines = text.split('\n');
+            const lineCount = lines.length;
+            
+            // 更新行数统计
+            lineCountEl.textContent = lineCount;
+            
+            // 更新字符数统计
+            const charCount = text.length;
+            charCountEl.textContent = charCount;
+            
+            // 生成行号HTML
+            let lineNumbersHTML = '';
+            for (let i = 1; i <= lineCount; i++) {
+                lineNumbersHTML += `<div class="line-number">${i}</div>`;
+            }
+            
+            // 如果文本为空，至少显示一行
+            if (lineCount === 0) {
+                lineNumbersHTML = '<div class="line-number">1</div>';
+            }
+            
+            // 更新行号显示
+            lineNumbers.innerHTML = lineNumbersHTML;
+        }
+        
+        // 同步滚动函数
+        function syncScroll() {
+            lineNumbers.scrollTop = textInput.scrollTop;
+        }
+        
+        // 事件监听
+        textInput.addEventListener('input', updateLineNumbers);
+        textInput.addEventListener('scroll', syncScroll);
+        
+        // 初始加载时更新行号
+        updateLineNumbers();
+        
+        // 示例文本（可选，实际使用时可以注释掉）
+        const exampleText = ``;
+        
+        // 设置示例文本（注释掉下一行以清空初始内容）
+        textInput.value = exampleText;
+        updateLineNumbers();
+    </script>
+</body>
+</html>
