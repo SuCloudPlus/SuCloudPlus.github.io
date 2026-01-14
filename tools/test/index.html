@@ -44,15 +44,15 @@
     <!-- 主应用界面 -->
     <div class="app-container" id="appContainer">
         <!-- 头部 -->
-        <div class="header">
+        <header class="ui-header">
             <button class="mobile-menu-btn" onclick="toggleSidebar()">
                 <i class="fas fa-bars"></i>
             </button>
             <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="展开/收起侧边栏">
                 <i id="sidebar-toggle-icon" class="fas fa-chevron-left"></i>
             </button>
-            <div class="logo">
-                <i class="fas fa-book"></i> <span id="logo-text">加密记事本</span>
+            <div class="ui-logo">
+                <i class="fas fa-edit"></i>加密记事本</div>
             </div>
             <div class="file-info">
                 <span id="fileName">未选择文件</span>
@@ -60,15 +60,15 @@
                 <span id="unsavedStatus" class="save-status unsaved hidden">未保存</span>
             </div>
             <div class="toolbar">
-                <button onclick="newFile()" title="新建文件"><i class="fas fa-file"></i> <span>新建</span></button>
-                <button onclick="newFolder()" title="新建文件夹"><i class="fas fa-folder-plus"></i> <span>文件夹</span></button>
-                <button onclick="saveFile()" class="primary" title="保存"><i class="fas fa-save"></i> <span>保存</span></button>
-                <button onclick="syncWithGist()" title="同步"><i class="fas fa-sync-alt"></i> <span>同步</span></button>
+                <button class="ui-btn" onclick="newFile()" title="新建文件"><i class="fas fa-file"></i> <span>新建</span></button>
+                <button class="ui-btn" onclick="newFolder()" title="新建文件夹"><i class="fas fa-folder-plus"></i> <span>文件夹</span></button>
+                <button class="ui-btn" onclick="saveFile()" class="primary" title="保存"><i class="fas fa-save"></i> <span>保存</span></button>
+                <button class="ui-btn" onclick="syncWithGist()" title="同步"><i class="fas fa-sync-alt"></i> <span>同步</span></button>
                 <select onchange="changeTheme(this.value)" id="themeSelector">
                     <option value="dark">深色模式</option>
                     <option value="light">浅色模式</option>
                 </select>
-                <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <button class="ui-btn" id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="切换主题">
                     <i class="fas fa-moon"></i>
                 </button>
                 <button onclick="showSettings()" title="设置"><i class="fas fa-cog"></i></button>
@@ -76,7 +76,7 @@
         </div>
 
         <!-- 主容器 -->
-        <div class="main-container">
+        <div class="main-container editor-wrapper">
             <!-- 左侧目录树 -->
             <div class="sidebar" id="sidebar">
                 <div class="sidebar-header">
@@ -113,6 +113,9 @@
                             </div>
                         </div>
                         <textarea id="editor" placeholder="选择或创建文件以开始编辑..."></textarea>
+<div class="preview-panel">
+            <div class="preview-body markdown-body" id="preview"></div>
+        </div>
                     </div>
                     <div class="splitter" id="splitter" title="调整分割">
                         <i class="fas fa-grip-lines-vertical"></i>
