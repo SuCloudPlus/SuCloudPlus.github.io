@@ -1,14 +1,13 @@
-
-
 <!DOCTYPE html>
-    <html lang="zh-CN">
-        <head>
-        <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                <meta name="robots" content="noindex, nofollow">
-                    <title>加密书签管理器</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="robots" content="noindex, nofollow">
+    <title>加密书签管理器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="/assets/config.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
     :root {
         /* 默认深色模式变量 */
@@ -965,7 +964,7 @@ select {
 
 <script>
 // ==================== 用户加密配置 ====================
-const ENCRYPTED_CONFIG = "U2FsdGVkX1/Q77LOAksNf7bj2ljy4ZkipnAmbOZvCiwUy8S4aSAMy3gI9UB6Q8l0ov5qp8tQvbcmotuaByiL6Y9kF8dhdUBXU7o6r/NfOacU/ih3FObAlt0AcRVejbfOu3zpadhy/HIyDbZtXlol6NtwpIAAF/8Y8V8VgnYqnifS3kcqEhkaTta5zDw4r9VKATCnlKFmk8Dq6vIR+hYbprh3dHZsGWCU7XcbEVyl/KyT/JgQPl3NY6rew62/AkXArkhcDlIrVVFrfMGcMZgwGBbYHJKJhO+upo+5AMkLDrJFWsDmICTwQ3Jst4Da7o5U";
+const ENCRYPTED_CONFIG = ENCRYPTED_CONFIG_bookmark;
 
 // ==================== DOM元素 ====================
 const authContainer = document.getElementById('auth-container');
