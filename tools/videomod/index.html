@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音频可视化生成器 V3 (专业版)</title>
+    
+    <script>
+        // 默认配置
+        const APP_CONFIG = {
+            fftSize: 2048,
+            bar: {
+                color: '#7cff4d', 
+                count: 64, // 频谱数量
+                opacity: 1.0, // 不透明度
+                width: 10, //柱子宽度
+                radius: 5, // 圆角半径
+                scale: 300, // 高度缩放
+                margin: 0, 
+                roundBottom: false,
+                baseHeight: 10 // 新增：默认高度（频谱值为0时的基础高度）
+            },
+            ripple: {
+                color: '#4db6ff', 
+                count: 20,       // 圈数
+                startRadius: 50, // 起始半径
+                spacing: 20,     // 间距
+                amplitude: 20,   // 扭曲幅度 (原震动)
+                thickness: 2,
+                opacity: 0.8,
+                offsetX: 0,      // X偏移
+                offsetY: 0       // Y偏移
+            }
+        };
+    </script>
+
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-color: #00e676;
+            --input-bg: #2c2c2c;
+            --border-color: #444;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* 布局 */
+        .container { display: flex; width: 100%; height: 100%; }
+        .left-panel {
+            width: 400px; /* 加宽一点以容纳输入框 */
+            background-color: var(--panel-bg);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+        .right-panel {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #000;
+            position: relative;
+        }
+
+        /* 控件样式 */
+        h3 { margin: 10px 0; font-size: 14px; color: var(--accent-color); border-bottom: 1px solid #333; padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;}
+        .control-group { background: #252525; padding: 12px; border-radius: 6px; border: 1px solid #333; }
+        
+        /* 带有输入框的行 */
+        .row { display: flex; align-items: center; margin-bottom: 8px; gap: 8px; }
+        .row:last-child { margin-bottom: 0; }
+        .row label { font-size: 12px; color: #bbb; width: 60px; flex-shrink: 0; }
+        
+        input[type="range"] { flex-grow: 1; height: 4px; background: #444; border-radius: 2px; appearance: none; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; background: var(--accent-color); border-radius: 50%; }
+        
+        /* 数值输入框 */
+        input[type="number"] {
+            width: 45px; background: var(--input-bg); border: 1px solid #555; color: white;
+            padding: 2px 4px; border-radius: 3px; font-size: 11px; text-align: center;
+        }
+        input[type="number"]:focus { border-color: var(--accent-color); outline: none; }
+        
+        input[type="color"] { border: none; width: 25px; height: 25px; padding: 0; background: none; cursor: pointer;}
+        
+        /* 可视化翻转按钮 */
+        .flip-group { display: flex; gap: 10px; width: 100%; }
+        .flip-control { flex: 1; background: var(--input-bg); border-radius: 4px; display: flex; overflow: hidden; border: 1px solid #444; }
+        .flip-btn {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            padding: 6px 0; cursor: pointer; background: transparent; transition: 0.2s;
+            position: relative;
+        }
+        .flip-btn:hover { background: rgba(255,255,255,0.05); }
+        .flip-btn.active { background: var(--accent-color); }
+        .flip-btn.active svg path { fill: #000; }
+        .flip-btn svg { width: 16px; height: 16px; }
+        .flip-btn svg path { fill: #888; }
+        
+        /* 上传框 */
+        .upload-section { display: flex; gap: 10px; }
+        .upload-box {
+            flex: 1; height: 90px; background: var(--input-bg); border: 2px dashed #444; border-radius: 6px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; position: relative; overflow: hidden; transition: 0.2s;
+        }
+        .upload-box:hover { border-color: var(--accent-color); background: #333; }
+        .upload-box.has-file { border-style: solid; border-color: #2e7d32; background: #1b3320; }
+        .upload-box input { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; left:0; top:0; }
+        .upload-info { font-size: 10px; color: #aaa; text-align: center; margin-top: 4px; line-height: 1.2; padding: 0 5px;}
+        .upload-icon { font-size: 20px; margin-bottom: 2px; }
+
+        /* 频率滑块 */
+        .range-slider-container { position: relative; height: 25px; margin-top: 5px; }
+        .slider-track { position: absolute; top:10px; width: 100%; height: 4px; background: #333; border-radius: 2px; }
+        .slider-fill { position: absolute; top:10px; height: 4px; background: var(--accent-color); opacity: 0.5; }
+        .slider-thumb { 
+            position: absolute; top: 12px; width: 14px; height: 14px; background: #fff; 
+            border-radius: 50%; transform: translate(-50%, -50%); cursor: grab; box-shadow: 0 1px 3px rgba(0,0,0,0.5); 
+        }
+
+        /* 样式Tab */
+        .style-tabs { display: flex; gap: 10px; margin-bottom: 5px; }
+        .tab-btn { flex: 1; padding: 8px; background: var(--input-bg); border: 1px solid #444; color: #888; cursor: pointer; border-radius: 4px; text-align: center; font-size: 12px;}
+        .tab-btn.active { background: var(--accent-color); color: #000; border-color: var(--accent-color); font-weight: bold; }
+
+        /* 底部操作栏 */
+        .bottom-bar {
+            position: absolute; bottom: 20px; background: rgba(30,30,30,0.95);
+            padding: 8px 20px; border-radius: 50px; display: flex; gap: 12px; align-items: center;
+            border: 1px solid #444; box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 20;
+        }
+        .btn { padding: 6px 16px; border-radius: 20px; border: none; cursor: pointer; font-weight: 600; font-size: 12px; }
+        .btn-primary { background: var(--accent-color); color: #000; }
+        .btn-danger { background: #ff5252; color: white; }
+        select { background: #333; color: white; border: 1px solid #555; padding: 4px; border-radius: 4px; font-size: 12px;}
+
+        /* Canvas 背景 */
+        #preview-container {
+            width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;
+            background: linear-gradient(45deg, #1a1a1a 25%, transparent 25%, transparent 75%, #1a1a1a 75%), linear-gradient(45deg, #1a1a1a 25%, transparent 25%, transparent 75%, #1a1a1a 75%);
+            background-color: #111; background-size: 20px 20px; background-position: 0 0, 10px 10px;
+        }
+        canvas { max-width: 100%; max-height: 90vh; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        
+        #render-stats {
+            position: absolute; top: 20px; left: 20px; 
+            background: rgba(0,0,0,0.8); color: #fff; padding: 10px; border-radius: 4px;
+            font-size: 12px; border-left: 3px solid var(--accent-color); display: none; z-index: 50;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="left-panel">
+        <h3>1. 资源上传</h3>
+        <div class="upload-section">
+            <div class="upload-box" id="box-img">
+                <input type="file" id="img-input" accept="image/*">
+                <div class="upload-icon">??</div>
+                <div class="upload-info" id="info-img">点击上传图片<br>支持 JPG/PNG</div>
+            </div>
+            <div class="upload-box" id="box-audio">
+                <input type="file" id="audio-input" accept="audio/*">
+                <div class="upload-icon">?</div>
+                <div class="upload-info" id="info-audio">点击上传音频<br>支持 MP3/WAV</div>
+            </div>
+        </div>
+
+        <h3>2. 样式选择</h3>
+        <div class="style-tabs">
+            <div class="tab-btn active" data-style="bar">经典柱状</div>
+            <div class="tab-btn" data-style="ripple">同心涟漪</div>
+        </div>
+
+        <div id="params-bar" class="control-group">
+            <div class="row">
+                <label>颜色</label>
+                <input type="color" id="bar-color" value="#7cff4d">
+                <input type="text" id="bar-color-hex" value="#7cff4d" style="width:55px; border:none; background:none; color:#aaa; font-size:11px;">
+            </div>
+            <div class="row" data-sync="bar-count">
+                <label>频谱数量</label>
+                <input type="range" min="1" max="999" step="1">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="bar-scale">
+                <label>高度缩放</label>
+                <input type="range" min="10" max="1000" step="10">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="bar-base">
+                <label>默认高度</label>
+                <input type="range" min="0" max="200" step="1">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="bar-width">
+                <label>频谱宽度</label>
+                <input type="range" min="1" max="100">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="bar-margin">
+                <label>边缘距离</label>
+                <input type="range" min="0" max="300">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="bar-radius">
+                <label>圆角半径</label>
+                <input type="range" min="0" max="50">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="bar-opacity">
+                <label>不透明度</label>
+                <input type="range" min="0" max="1" step="0.01">
+                <input type="number" step="0.1">
+            </div>
+            
+            <label style="font-size:12px; color:#bbb; margin-top:8px; display:block;">翻转设置</label>
+            <div class="flip-group">
+                <div class="flip-control" id="ctrl-top">
+                    <div class="flip-btn" data-val="false" title="正序">
+<svg viewBox="0 0 24 24"><path d="M4 2h16v2H4V2zm2 4h3v14h-3V6zm4 0h3v10h-3V6zm4 0h3v6h-3V6z"/></svg>
+                    </div>
+                    <div class="flip-btn active" data-val="true" title="倒序 (水平翻转)">
+                        <svg viewBox="0 0 24 24"><path d="M4 2h16v2H4V2zm5 4v6h-3V6h3zm4 0v10h-3V6h3zm4 0v14h-3V6h3z"/></svg>
+                     </div>
+                </div>
+            </div>
+            <div class="flip-group">
+                <div class="flip-control" id="ctrl-bot">
+                    <div class="flip-btn active" data-val="false" title="正序">
+<svg viewBox="0 0 24 24"><path d="M4 22h16v-2H4v2zm2-4h3V4h-3v14zm4 0h3V8h-3v10zm4 0h3v-6h-3v6z"/></svg>
+                    </div>
+                    <div class="flip-btn" data-val="true" title="倒序 (水平翻转)">
+                        <svg viewBox="0 0 24 24"><path d="M4 22h16v-2H4v2zm5-4v-6h-3v6h3zm4 0v-10h-3v10h3zm4 0V4h-3v14h3z"/></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="params-ripple" class="control-group" style="display:none;">
+            <div class="row">
+                <label>颜色</label>
+                <input type="color" id="rip-color" value="#4db6ff">
+            </div>
+            <div class="row" data-sync="rip-count">
+                <label>圆圈数量</label>
+                <input type="range" min="5" max="50" step="1">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="rip-spacing">
+                <label>间距</label>
+                <input type="range" min="5" max="100">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="rip-amplitude">
+                <label>扭曲强度</label>
+                <input type="range" min="0" max="100">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="rip-start">
+                <label>起始半径</label>
+                <input type="range" min="0" max="500">
+                <input type="number">
+            </div>
+            
+            <div style="border-top:1px dashed #444; margin:8px 0;"></div>
+            
+            <div class="row" data-sync="rip-offx">
+                <label>X轴偏移</label>
+                <input type="range" min="-1000" max="1000">
+                <input type="number">
+            </div>
+            <div class="row" data-sync="rip-offy">
+                <label>Y轴偏移</label>
+                <input type="range" min="-600" max="600">
+                <input type="number">
+            </div>
+        </div>
+
+        <h3>3. 频率控制</h3>
+        <div class="control-group">
+            <div class="row" data-sync="smooth">
+                <label>平滑度</label>
+                <input type="range" min="0" max="0.95" step="0.01">
+                <input type="number" step="0.01">
+            </div>
+            <div class="row" style="margin-top:10px; justify-content:space-between;">
+                <label style="width:auto;">频率区间 (Hz)</label>
+                <span id="freq-text" style="font-size:11px; color:var(--accent-color);">0 - 20000</span>
+            </div>
+            <div class="range-slider-container" id="freq-slider">
+                <div class="slider-track"></div>
+                <div class="slider-fill" id="freq-fill"></div>
+                <div class="slider-thumb" id="thumb-low" style="left:0%;"></div>
+                <div class="slider-thumb" id="thumb-high" style="left:100%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div id="render-stats">
+            <div>RENDERING...</div>
+            <div id="rs-res">1920x1080</div>
+            <div id="rs-prog">0%</div>
+            <div style="font-size:10px; color:#888; margin-top:5px;">点击渲染按钮取消</div>
+        </div>
+
+        <div id="preview-container">
+            <canvas id="main-canvas"></canvas>
+        </div>
+
+        <div class="bottom-bar">
+            <select id="vid-res">
+                <option value="auto">原生尺寸</option>
+                <option value="1280x720">720P</option>
+                <option value="1920x1080" selected>1080P</option>
+                <option value="3840x2160">4K</option>
+            </select>
+            <select id="vid-fps">
+                <option value="30">30 FPS</option>
+                <option value="60">60 FPS</option>
+            </select>
+            <div style="width:1px; height:15px; background:#555;"></div>
+            <button class="btn btn-primary" id="btn-play">播放预览 (循环)</button>
+            <button class="btn btn-danger" id="btn-render">渲染导出</button>
+            <a id="download-link" style="display:none;"></a>
+        </div>
+    </div>
+</div>
+
+<script>
+const Viz = (function() {
+    // 状态
+    const S = {
+        ctx: null, canvas: null,
+        img: null, audio: null,
+        ac: null, an: null, src: null,
+        playing: false, rendering: false,
+        startTime: 0, pauseOff: 0, animId: 0,
+        style: 'bar', // bar | ripple
+        freq: { start: 0, end: 1 },
+        flipTop: true, flipBot: false,
+        
+        // 参数引用
+        cfg: JSON.parse(JSON.stringify(APP_CONFIG))
+    };
+
+    // UI 映射
+    const UI = {};
+
+    function init() {
+        S.canvas = document.getElementById('main-canvas');
+        S.ctx = S.canvas.getContext('2d');
+        bindUI();
+        initAudio();
+        resize(1280, 720);
+        drawIdle();
+    }
+
+    function initAudio() {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        S.ac = new AC();
+        S.an = S.ac.createAnalyser();
+        S.an.fftSize = S.cfg.fftSize;
+    }
+
+    function bindUI() {
+        // 1. 上传
+        document.getElementById('img-input').onchange = e => loadFile(e.target.files[0], 'img');
+        document.getElementById('audio-input').onchange = e => loadFile(e.target.files[0], 'audio');
+
+        // 2. 双向数值绑定 helper
+        const bindNum = (key, obj, prop, type='float') => {
+            const div = document.querySelector(`[data-sync="${key}"]`);
+            if(!div) return;
+            const rng = div.querySelector('input[type=range]');
+            const num = div.querySelector('input[type=number]');
+            
+            // 初始化值
+            rng.value = obj[prop];
+            num.value = obj[prop];
+
+            const update = (val) => {
+                if(type==='float') val = parseFloat(val);
+                else val = parseInt(val);
+                obj[prop] = val;
+                rng.value = val;
+                num.value = val;
+                if(key === 'smooth') S.an.smoothingTimeConstant = val;
+                reqDraw();
+            };
+
+            rng.oninput = e => update(e.target.value);
+            num.onchange = e => update(e.target.value);
+        };
+
+        // 绑定所有参数
+        bindNum('bar-opacity', S.cfg.bar, 'opacity');
+        bindNum('bar-scale', S.cfg.bar, 'scale');
+        bindNum('bar-base', S.cfg.bar, 'baseHeight'); // 新增：默认高度
+        bindNum('bar-width', S.cfg.bar, 'width');
+        bindNum('bar-margin', S.cfg.bar, 'margin');
+        bindNum('bar-radius', S.cfg.bar, 'radius');
+        bindNum('bar-count', S.cfg.bar, 'count');
+
+        
+        bindNum('rip-count', S.cfg.ripple, 'count', 'int');
+        bindNum('rip-spacing', S.cfg.ripple, 'spacing');
+        bindNum('rip-amplitude', S.cfg.ripple, 'amplitude');
+        bindNum('rip-start', S.cfg.ripple, 'startRadius');
+        bindNum('rip-offx', S.cfg.ripple, 'offsetX', 'int');
+        bindNum('rip-offy', S.cfg.ripple, 'offsetY', 'int');
+        
+        bindNum('smooth', S.cfg, 'smooth', 'float'); // 特殊处理
+
+        // 颜色
+        const bindColor = (id, obj) => {
+            const pk = document.getElementById(id);
+            pk.oninput = e => { obj.color = e.target.value; reqDraw(); };
+        };
+        bindColor('bar-color', S.cfg.bar);
+        bindColor('rip-color', S.cfg.ripple);
+
+        // 翻转 UI
+        setupFlip('ctrl-top', val => { S.flipTop = val; reqDraw(); });
+        setupFlip('ctrl-bot', val => { S.flipBot = val; reqDraw(); });
+
+        // Tab
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.onclick = () => {
+                document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+                b.classList.add('active');
+                S.style = b.dataset.style;
+                document.getElementById('params-bar').style.display = S.style==='bar'?'block':'none';
+                document.getElementById('params-ripple').style.display = S.style==='ripple'?'block':'none';
+                reqDraw();
+            }
+        });
+
+        // 按钮
+        document.getElementById('btn-play').onclick = togglePlay;
+        document.getElementById('btn-render').onclick = toggleRender;
+        document.getElementById('vid-res').onchange = () => { if(!S.playing) resizeFromUI(); reqDraw(); };
+
+        // 频率滑块
+        initFreqSlider();
+    }
+
+    function setupFlip(id, cb) {
+        const el = document.getElementById(id);
+        const btns = el.querySelectorAll('.flip-btn');
+        btns.forEach(b => {
+            b.onclick = () => {
+                btns.forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                cb(b.dataset.val === 'true');
+            }
+        });
+    }
+
+    function loadFile(file, type) {
+        if(!file) return;
+        const url = URL.createObjectURL(file);
+        if(type === 'img') {
+            const im = new Image();
+            im.onload = () => {
+                S.img = im;
+                document.getElementById('box-img').classList.add('has-file');
+                document.getElementById('info-img').innerHTML = `${im.naturalWidth}x${im.naturalHeight}<br>已就绪`;
+                if(document.getElementById('vid-res').value==='auto') resize(im.naturalWidth, im.naturalHeight);
+                reqDraw();
+            };
+            im.src = url;
+        } else {
+            const r = new FileReader();
+            r.onload = e => {
+                S.ac.decodeAudioData(e.target.result).then(b => {
+                    S.audio = b;
+                    const dur = b.duration.toFixed(1);
+                    document.getElementById('box-audio').classList.add('has-file');
+                    document.getElementById('info-audio').innerHTML = `${dur}秒 / ${b.sampleRate}Hz<br>已就绪`;
+                });
+            };
+            r.readAsArrayBuffer(file);
+        }
+    }
+
+    function initFreqSlider() {
+        const track = document.getElementById('freq-slider');
+        const fill = document.getElementById('freq-fill');
+        const t1 = document.getElementById('thumb-low');
+        const t2 = document.getElementById('thumb-high');
+        const txt = document.getElementById('freq-text');
+        
+        let drag = null;
+        
+        const update = () => {
+            const p1 = S.freq.start * 100;
+            const p2 = S.freq.end * 100;
+            t1.style.left = p1 + '%';
+            t2.style.left = p2 + '%';
+            fill.style.left = p1 + '%';
+            fill.style.width = (p2-p1) + '%';
+            txt.innerText = `${Math.floor(S.freq.start*22050)} - ${Math.floor(S.freq.end*22050)}`;
+            reqDraw();
+        };
+
+        const onMove = e => {
+            if(!drag) return;
+            const rect = track.getBoundingClientRect();
+            const p = Math.max(0, Math.min(1, (e.clientX - rect.left)/rect.width));
+            if(drag === 'low') S.freq.start = Math.min(p, S.freq.end - 0.05);
+            else S.freq.end = Math.max(p, S.freq.start + 0.05);
+            update();
+        };
+        
+        t1.onmousedown = () => drag = 'low';
+        t2.onmousedown = () => drag = 'high';
+        window.onmouseup = () => drag = null;
+        window.onmousemove = onMove;
+    }
+
+    // --- 核心绘图 ---
+    function resize(w, h) { S.canvas.width = w; S.canvas.height = h; }
+    function resizeFromUI() {
+        const v = document.getElementById('vid-res').value;
+        if(v === 'auto') {
+            if(S.img) resize(S.img.naturalWidth, S.img.naturalHeight);
+        } else {
+            const [w, h] = v.split('x');
+            resize(w, h);
+        }
+    }
+
+    function getAudioData() {
+        if(!S.an) return [];
+        const arr = new Uint8Array(S.an.frequencyBinCount);
+        S.an.getByteFrequencyData(arr);
+        
+        // 截取 & 重采样
+        const binCount = arr.length;
+        const s = Math.floor(S.freq.start * binCount);
+        const e = Math.floor(S.freq.end * binCount);
+        const sub = arr.slice(s, e);
+        
+        // 目标数量
+        const target = S.style === 'bar' ? S.cfg.bar.count : S.cfg.ripple.count;
+        const res = [];
+        const step = sub.length / target;
+        
+        for(let i=0; i<target; i++) {
+            const idx = Math.floor(i * step);
+            // 简单取值，也可以做区间平均
+            res.push(sub[idx] || 0);
+        }
+        return res;
+    }
+
+    function draw() {
+        const { width: w, height: h } = S.canvas;
+        S.ctx.clearRect(0, 0, w, h);
+        
+        // 背景
+        if(S.img) S.ctx.drawImage(S.img, 0, 0, w, h);
+        else {
+            S.ctx.fillStyle = '#111';
+            S.ctx.fillRect(0,0,w,h);
+        }
+
+        const data = getAudioData();
+        if(S.style === 'bar') drawBar(data, w, h);
+        else drawRipple(data, w, h);
+    }
+
+    function drawBar(data, w, h) {
+        const c = S.cfg.bar;
+        S.ctx.fillStyle = c.color;
+        S.ctx.globalAlpha = c.opacity;
+        
+        const count = data.length;
+        const segment = w / (count + 1);
+        
+        // Helper
+        const dRect = (val, i, isTop) => {
+            // 新增：包含基础高度和音量缩放高度
+            const baseH = c.baseHeight; // 基础高度
+            const scaledH = (val / 255) * c.scale; // 音量缩放高度
+            const totalHeight = baseH + scaledH; // 总高度 = 基础高度 + 音量缩放高度
+            
+            if(totalHeight < 1) return; // 如果总高度小于1像素，不绘制
+            
+            const cx = segment * (i + 1);
+            const x = cx - c.width/2;
+            const y = isTop ? c.margin : h - totalHeight - c.margin;
+            
+            // 绘制圆角
+            S.ctx.beginPath();
+            S.ctx.roundRect(x, y, c.width, totalHeight, c.radius);
+            S.ctx.fill();
+        };
+
+        const topD = S.flipTop ? [...data].reverse() : data;
+        topD.forEach((v, i) => dRect(v, i, true));
+        
+        const botD = S.flipBot ? [...data].reverse() : data;
+        botD.forEach((v, i) => dRect(v, i, false));
+        
+        S.ctx.globalAlpha = 1;
+    }
+
+    function drawRipple(data, w, h) {
+        // 同心扭曲圆环逻辑
+        const c = S.cfg.ripple;
+        S.ctx.strokeStyle = c.color;
+        S.ctx.lineWidth = c.thickness;
+        S.ctx.globalAlpha = c.opacity;
+        
+        const cx = (w/2) + c.offsetX;
+        const cy = (h/2) + c.offsetY;
+
+        // data[0] 是内圈 (低频)，data[n] 是外圈 (高频)
+        for(let i=0; i<data.length; i++) {
+            const val = data[i]; // 0-255
+            const baseR = c.startRadius + (i * c.spacing);
+            
+            // 如果音量太小，不扭曲，只画圆
+            const dist = (val / 255) * c.amplitude; 
+            
+            S.ctx.beginPath();
+            // 画一个扭曲的圆
+            const segments = 60; // 圆的分段数
+            for(let j=0; j<=segments; j++) {
+                const ang = (j / segments) * Math.PI * 2;
+                // 扭曲算法：基于角度的正弦波 * 音量幅度
+                // 为了让它像水波，加入一些随索引变化的相位偏移
+                const wave = Math.sin(ang * 10 + i) * dist; 
+                const r = baseR + wave;
+                
+                const px = cx + Math.cos(ang) * r;
+                const py = cy + Math.sin(ang) * r;
+                if(j===0) S.ctx.moveTo(px, py);
+                else S.ctx.lineTo(px, py);
+            }
+            S.ctx.closePath();
+            S.ctx.stroke();
+        }
+        S.ctx.globalAlpha = 1;
+    }
+
+    function drawIdle() {
+        const { width: w, height: h } = S.canvas;
+        S.ctx.fillStyle = '#1a1a1a';
+        S.ctx.fillRect(0,0,w,h);
+        S.ctx.fillStyle = '#666';
+        S.ctx.font = '20px sans-serif';
+        S.ctx.textAlign = 'center';
+        S.ctx.fillText("请上传图片和音频", w/2, h/2);
+    }
+
+    function reqDraw() {
+        if(!S.playing && !S.rendering) requestAnimationFrame(draw);
+    }
+
+    // --- 播放逻辑 ---
+    function togglePlay() {
+        if(!S.audio) return alert("请先上传音频");
+        if(S.playing) {
+            S.src.stop();
+            S.src.disconnect();
+            S.pauseOff = S.ac.currentTime - S.startTime;
+            S.playing = false;
+            cancelAnimationFrame(S.animId);
+            document.getElementById('btn-play').textContent = "播放预览 (循环)";
+        } else {
+            S.src = S.ac.createBufferSource();
+            S.src.buffer = S.audio;
+            S.src.loop = true; // 循环播放关键点
+            S.src.connect(S.an);
+            S.an.connect(S.ac.destination);
+            
+            // 循环模式下的偏移处理稍微复杂，简化为继续播放
+            // 注意：loop=true 时，offset 参数只影响第一次开始位置
+            S.startTime = S.ac.currentTime - S.pauseOff;
+            // 处理一下边界，如果pauseOff超过时长，归零
+            if(S.pauseOff >= S.audio.duration) S.pauseOff = 0;
+            
+            S.src.start(0, S.pauseOff);
+            S.playing = true;
+            document.getElementById('btn-play').textContent = "暂停预览";
+            loop();
+        }
+    }
+
+    function loop() {
+        draw();
+        S.animId = requestAnimationFrame(loop);
+    }
+
+    // --- 渲染逻辑 ---
+    async function toggleRender() {
+        if(!S.audio || !S.img) return alert("资源不全");
+        if(S.rendering) {
+            // 取消逻辑
+            window.location.reload(); // 简单粗暴重置，防止状态混乱
+            return;
+        }
+
+        if(S.playing) togglePlay(); // 停止预览
+
+        S.rendering = true;
+        resizeFromUI();
+        
+        const btn = document.getElementById('btn-render');
+        const stats = document.getElementById('render-stats');
+        btn.textContent = "取消渲染";
+        btn.classList.replace('btn-danger', 'btn-primary');
+        stats.style.display = 'block';
+        document.getElementById('rs-res').textContent = `${S.canvas.width}x${S.canvas.height}`;
+
+        // 1. Setup Stream
+        const fps = parseInt(document.getElementById('vid-fps').value);
+        const stream = S.canvas.captureStream(fps);
+        const dest = S.ac.createMediaStreamDestination();
+        
+        const src = S.ac.createBufferSource();
+        src.buffer = S.audio;
+        src.connect(S.an);
+        S.an.connect(dest); // 音频不输出到扬声器，只输出到流
+
+        stream.addTrack(dest.stream.getAudioTracks()[0]);
+
+        // 2. Recorder
+        let mime = 'video/webm;codecs=vp9';
+        if(MediaRecorder.isTypeSupported('video/mp4')) mime = 'video/mp4';
+        
+        const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 15000000 });
+        const chunks = [];
+        rec.ondataavailable = e => { if(e.data.size>0) chunks.push(e.data); };
+        rec.onstop = () => {
+            const blob = new Blob(chunks, {type: mime});
+            const url = URL.createObjectURL(blob);
+            const a = document.getElementById('download-link');
+            a.href = url;
+            a.download = `viz_video_${Date.now()}.${mime.includes('mp4')?'mp4':'webm'}`;
+            a.click();
+            
+            btn.textContent = "渲染完成 (点击刷新)";
+            S.rendering = false;
+        };
+
+        // 3. Start
+        rec.start();
+        src.start(0);
+
+        // 4. Manual Loop
+        const total = S.audio.duration;
+        const startT = S.ac.currentTime;
+
+        const renderFrame = () => {
+            if(!S.rendering) return;
+            draw();
+            const curr = S.ac.currentTime - startT;
+            const pct = Math.min(100, (curr/total)*100).toFixed(1);
+            document.getElementById('rs-prog').textContent = pct + "%";
+
+            if(curr < total) {
+                requestAnimationFrame(renderFrame);
+            } else {
+                rec.stop();
+                src.stop();
+            }
+        };
+        renderFrame();
+    }
+
+    return { init };
+})();
+
+window.onload = Viz.init;
+</script>
+</body>
+</html>
+
