@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="/assets/config.js"></script>
     <link rel="stylesheet" href="/assets/style_bookmark.css">
-    <link rel="stylesheet" href="/assets/login_bookmark.css">
+    <link rel="stylesheet" href="/assets/login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -19,16 +19,20 @@
 <div id="mobile-overlay" class="overlay" onclick="toggleSidebar()"></div>
 
 <!-- 认证界面 -->
-<div id="auth-container" class="auth-container">
-    <div class="auth-box">
-        <h2 class="auth-title"><i class="fas fa-lock"></i> 加密书签管理器</h2>
-            <div class="form-row">
-                <input type="password" id="password" placeholder="输入密码..." autocomplete="current-password">
-                    </div>
-<button id="login-btn" class="btn"><i class="fas fa-lock-open"></i> 解锁 / 创建</button>
-<div id="auth-loader" class="loader hidden"></div>
-<p id="auth-error" class="error-message"></p>
-</div>
+<div id="login-container" class="login-container">
+    <div class="login-box">
+        <h1><i class="fas fa-lock"></i> 加密书签管理器</h2>
+        <div class="form-group">
+            <label for="loginPassword">访问密码</label>
+            <input type="password" id="password" placeholder="请输入您的加密密码" autocomplete="current-password">
+        </div>
+        <button id="login-btn"><i class="fas fa-lock-open"></i>解锁</button>
+        <div class="login-message" id="loginMessage">等待输入密码</div>
+        <p style="margin-top: 1.5rem; font-size: 0.9rem; color: #aaa; text-align: center;">
+            密码用于解密Gist配置和数据
+        </p>
+        <div id="auth-loader" class="loader hidden"></div>
+    </div>
 </div>
 
 <!-- 主应用界面 -->
@@ -166,13 +170,12 @@
 const ENCRYPTED_CONFIG = ENCRYPTED_CONFIG_bookmark;
 
 // ==================== DOM元素 ====================
-const authContainer = document.getElementById('auth-container');
+const authContainer = document.getElementById('login-container');
 const appContainer = document.getElementById('app-container');
 const passwordInput = document.getElementById('password');
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
-const authLoader = document.getElementById('auth-loader');
-const authError = document.getElementById('auth-error');
+const authError = document.getElementById('loginMessage');
 const bookmarkList = document.getElementById('bookmark-list');
 const bookmarkTableHeader = document.getElementById('bookmark-table-header');
 const folderTree = document.getElementById('folder-tree');
@@ -251,10 +254,6 @@ function showToast(message, type = 'info', duration = 3000) {
             }, duration);
         }
 
-/** 切换加载状态 */
-function toggleLoader(loader, show) {
-    loader.classList.toggle('hidden', !show);
-}
 
 /** 隐藏所有表单 */
 function hideAllForms() {
@@ -1225,9 +1224,7 @@ async function handleLogin() {
         }
 
         // 获取Gist数据
-        toggleLoader(authLoader, true);
         const content = await fetchGistWithConfig(GIST_URL, GITHUB_TOKEN);
-        toggleLoader(authLoader, false);
 
         if (content === null) {
             authError.textContent = '无法获取数据';
@@ -1382,7 +1379,7 @@ function showAuthView() {
     appContainer.classList.add('hidden');
     authContainer.classList.remove('hidden');
     passwordInput.value = '';
-    authError.textContent = '';
+    authError.textContent = '等待输入密码';
 }
 
 // ==================== 事件监听 ====================
