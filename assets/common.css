@@ -1,0 +1,191 @@
+/* =========================================
+   通用样式变量定义 - 核心风格控制
+   ========================================= */
+:root {
+    /* 基础颜色 - 深色模式 (默认) */
+    --bg-primary: #1a1a1a;          /* 主背景色 */
+    --bg-secondary: #252525;        /* 次要背景色（侧边栏、卡片） */
+    --bg-tertiary: #2d2d2d;         /* 第三背景色（工具栏、输入框） */
+    
+    --text-main: #f0f0f0;           /* 主文字颜色 */
+    --text-muted: #aaaaaa;          /* 辅助/灰色文字 */
+    
+    --brand-color: #4a6fa5;         /* 品牌主题色 */
+    --brand-hover: #5d83b9;         /* 品牌色悬停态 */
+    
+    --border-color: #444444;        /* 边框颜色 */
+    --divider: rgba(255, 255, 255, 0.1); /* 分割线 */
+    
+    --status-success: #51cf66;      /* 成功状态色 */
+    --status-error: #ff6b6b;        /* 错误状态色 */
+    
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);  /* 浅阴影 */
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4); /* 重阴影 */
+    
+    --radius-md: 8px;               /* 标准圆角 */
+    --radius-sm: 4px;               /* 小圆角 */
+    
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 全局过渡动画 */
+}
+
+/* 浅色模式变量覆盖 */
+.light-mode {
+    --bg-primary: #f8f9fa;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f3f5;
+    
+    --text-main: #212529;
+    --text-muted: #6c757d;
+    
+    --brand-color: #4a6fa5;
+    --brand-hover: #3b5984;
+    
+    --border-color: #dee2e6;
+    --divider: rgba(0, 0, 0, 0.05);
+    
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* =========================================
+   基础布局重置
+   ========================================= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box; /* 确保内边距不影响元素宽度 */
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-main);
+    line-height: 1.6;
+    transition: background-color var(--transition), color var(--transition);
+    overflow-x: hidden;
+}
+
+/* =========================================
+   常用组件样式 - 统一 UI 元素
+   ========================================= */
+
+/* 1. 按钮统一 */
+.ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;                       /* 图标和文字间距 */
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all var(--transition);
+    white-space: nowrap;            /* 防止文字折行 */
+}
+
+.ui-btn:hover {
+    background-color: var(--divider);
+    border-color: var(--brand-color);
+}
+
+.ui-btn.primary {
+    background-color: var(--brand-color);
+    color: white;
+    border: none;
+}
+
+.ui-btn.primary:hover {
+    background-color: var(--brand-hover);
+    transform: translateY(-1px);    /* 悬停微动效 */
+}
+
+/* 2. 表单输入统一 */
+.ui-input {
+    width: 100%;
+    padding: 10px 14px;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: 14px;
+    transition: border-color var(--transition);
+}
+
+.ui-input:focus {
+    outline: none;
+    border-color: var(--brand-color);
+    box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+}
+
+/* 3. 头部导航栏 (Header) */
+.ui-header {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.ui-logo {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--brand-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 4. 侧边栏 (Sidebar) */
+.ui-sidebar {
+    width: 260px;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+
+/* 5. 滚动条美化 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* =========================================
+   移动端适配 (Responsive)
+   ========================================= */
+@media (max-width: 768px) {
+    .ui-sidebar {
+        width: 100%;
+        position: fixed;
+        left: -100%;
+        top: 60px;
+        bottom: 0;
+        z-index: 99;
+        transition: left var(--transition);
+    }
+    
+    .ui-sidebar.show {
+        left: 0;
+    }
+}
